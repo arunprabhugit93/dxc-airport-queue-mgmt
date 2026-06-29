@@ -235,10 +235,10 @@ export const api = {
   getNetworkHealth: () =>
     get<{ as_of: string; network_score: number; network_grade: string; airports: NetworkAirportHealth[] }>("/network/health"),
 
-  getShiftHandoff: (airport?: string) => {
-    const params: Record<string, string> = {};
+  getShiftHandoff: (airport?: string, shiftHours = 8) => {
+    const params: Record<string, string> = { shift_hours: String(shiftHours) };
     if (airport && airport !== "All") params.airport = airport;
-    return get<{ as_of: string; handoffs: { airport_code: string; shift_start: string; shift_end: string; summary: string; peak_wait_min: number; avg_wait_min: number; total_pax: number; anomalies_during_shift: number; sla_breaches: number; next_shift_outlook: string }[] }>("/operations/shift-handoff", params);
+    return get<{ as_of: string; handoffs: { airport_code: string; shift_start: string; shift_end: string; summary: string; peak_wait_min: number; avg_wait_min: number; total_pax: number; anomalies_during_shift: number; sla_breaches: number; key_events: { time: string; event_type: string; description: string; severity: string | null }[]; next_shift_outlook: string }[] }>("/operations/shift-handoff", params);
   },
 
   getCapacity: (airport: string) =>

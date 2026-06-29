@@ -30,6 +30,7 @@ import {
   DollarSign,
   Activity,
   ChevronRight,
+  ClipboardList,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -52,6 +53,7 @@ const queuePages = [
   { href: "/staffing", label: "Staffing", icon: Users },
   { href: "/simulator", label: "Simulator", icon: FlaskConical },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/shift-handoff", label: "Shift Handoff", icon: ClipboardList },
 ];
 
 const energyPages = [
