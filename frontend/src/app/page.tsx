@@ -113,10 +113,11 @@ export default function CommandCenter() {
   }, [demoNow, airport]);
 
   const highAnomalies = anomalies.filter((a) => a.severity === "HIGH");
+  const breachQueues = queues.filter((q) => q.sla_status === "BREACH");
   const worstWait = airports.length
     ? Math.max(...airports.map((a) => a.worst_wait_min))
     : 0;
-  const breachCount = queues.filter((q) => q.sla_status === "BREACH").length;
+  const breachCount = breachQueues.length;
   const activeAnomalies = anomalies.length;
   const totalPax = airports.reduce((s, a) => s + a.total_pax_today, 0);
 
@@ -188,23 +189,44 @@ export default function CommandCenter() {
               </CardContent>
             </Card>
 
-            {/* High Severity Alert Banners */}
+            {/* Critical Alerts: SLA Breaches + High Anomalies */}
             <div className="lg:col-span-3 space-y-3">
-              {highAnomalies.length === 0 ? (
+              {breachQueues.length === 0 && highAnomalies.length === 0 ? (
                 <Card>
                   <CardContent className="py-6 text-center text-muted-foreground">
                     <ShieldAlert className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                    No high-severity alerts
+                    All queues within SLA — no critical alerts
                   </CardContent>
                 </Card>
               ) : (
-                highAnomalies.slice(0, 3).map((a) => (
+                <>
+                  {breachQueues.slice(0, 4).map((q) => (
+                    <Card
+                      key={`${q.airport_code}-${q.area_type}`}
+                      className="border-red-500/50 bg-red-500/5"
+                    >
+                      <CardContent className="flex items-start gap-3 py-4">
+                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold">{q.airport_code}</span>
+                            <span className="text-muted-foreground text-sm">{AREA_LABELS[q.area_type] || q.area_type}</span>
+                            <StatusBadge status="BREACH" />
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Wait time {q.wait_min.toFixed(1)} min exceeds SLA (10 min) — {q.pax_last_hour.toLocaleString()} pax/hr with {q.lanes_open} lanes open
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {highAnomalies.slice(0, 2).map((a) => (
                   <Card
                     key={a.event_id}
-                    className="border-red-500/50 bg-red-500/5"
+                    className="border-yellow-500/50 bg-yellow-500/5"
                   >
                     <CardContent className="flex items-start gap-3 py-4">
-                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+                      <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-red-500">
@@ -225,6 +247,8 @@ export default function CommandCenter() {
                     </CardContent>
                   </Card>
                 ))
+                }
+                </>
               )}
             </div>
           </div>
