@@ -325,6 +325,7 @@ def test_energy_setpoint_simulation_and_recommendations() -> None:
             json={"airport_code": "ATL", "setpoint_delta_f": 2.0, "duration_hours": 8},
         )
         recommendations = client.get("/energy/recommendations")
+        cases = client.get("/energy/scenario-cases")
 
     assert simulation.status_code == 200
     sim_data = simulation.json()
@@ -339,3 +340,13 @@ def test_energy_setpoint_simulation_and_recommendations() -> None:
     for rec in rec_data["recommendations"]:
         assert rec["priority"] in ("HIGH", "MEDIUM", "LOW")
         assert rec["estimated_savings_usd"] >= 0
+
+    assert cases.status_code == 200
+    case_data = cases.json()["cases"]
+    assert len(case_data) == 4
+    assert {case["case_id"] for case in case_data} == {
+        "free_cooling",
+        "comfort_band",
+        "active_cooling",
+        "extreme_cooling",
+    }

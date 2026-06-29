@@ -55,8 +55,8 @@ const queuePages = [
 ];
 
 const energyPages = [
+  { href: "/energy-management#scenario-lab", label: "Scenario Lab", icon: Thermometer },
   { href: "/energy-management#load-forecast", label: "Load Forecast", icon: TrendingUp },
-  { href: "/energy-management#setpoint-lab", label: "Setpoint Lab", icon: Thermometer },
   { href: "/energy-management#demand-response", label: "Demand Response", icon: Gauge },
   { href: "/energy-management#carbon-renewables", label: "Carbon & Renewables", icon: Leaf },
   { href: "/energy-management#tariff-control", label: "Tariff Control", icon: DollarSign },

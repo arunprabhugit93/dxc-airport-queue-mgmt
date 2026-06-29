@@ -14,7 +14,7 @@
 - **Docker Compose** — 3 services (data, api, dashboard)
 - **Docs** — README.md + docs/demo-script.md
 - **Energy Management V1** — FastAPI endpoints + Next.js route with module-specific
-  sidebar, terminal load, HVAC/temperature trends, setpoint savings simulation,
+  sidebar, backend scenario-case data, live temperature scenario lab,
   load forecast, demand response, tariff control, carbon/renewables, charging,
   asset health, comfort compliance, and recommendations
 
@@ -25,7 +25,7 @@ Added in overhaul (5): queues/all-areas, passenger-journey, operations/recommend
 
 Added in v2 (4): airports/{code}/terminals, airports/{code}/capacity, airports/{code}/scorecard, network/health
 
-Added in Energy Management V1 (5): energy/overview, energy/terminals, energy/temperature-profile, energy/setpoint-simulation, energy/recommendations
+Added in Energy Management V1 (6): energy/overview, energy/terminals, energy/temperature-profile, energy/scenario-cases, energy/setpoint-simulation, energy/recommendations
 
 ### Frontend routes
 - Queue Management: `/`, `/journey`, `/queues`, `/forecast`, `/anomalies`, `/staffing`, `/simulator`, `/analytics`

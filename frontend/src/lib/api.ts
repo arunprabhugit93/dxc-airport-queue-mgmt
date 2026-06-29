@@ -173,6 +173,15 @@ export interface EnergyRecommendation {
   estimated_savings_usd: number;
 }
 
+export interface EnergyScenarioCase {
+  case_id: string;
+  title: string;
+  condition: string;
+  decision: string;
+  impact: string;
+  priority: string;
+}
+
 // API functions
 export const api = {
   getHealth: () => get<{ status: string; db_loaded: boolean; models_loaded: string[]; demo_now: string }>("/health"),
@@ -255,6 +264,9 @@ export const api = {
 
   getEnergyTemperatureProfile: (airport: string) =>
     get<{ airport_code: string; as_of: string; points: EnergyTemperaturePoint[] }>("/energy/temperature-profile", { airport }),
+
+  getEnergyScenarioCases: () =>
+    get<{ cases: EnergyScenarioCase[] }>("/energy/scenario-cases"),
 
   simulateEnergySetpoint: (body: Record<string, unknown>) =>
     post<EnergySetpointSimulation>("/energy/setpoint-simulation", body),

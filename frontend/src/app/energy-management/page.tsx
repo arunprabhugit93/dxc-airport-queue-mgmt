@@ -16,7 +16,7 @@ import { api, AIRPORT_CODES } from "@/lib/api";
 import type {
   EnergyAirportSummary,
   EnergyRecommendation,
-  EnergySetpointSimulation,
+  EnergyScenarioCase,
   EnergyTemperaturePoint,
   EnergyTerminalStatus,
 } from "@/lib/api";
@@ -44,7 +44,6 @@ import {
   Gauge,
   Leaf,
   Thermometer,
-  Zap,
 } from "lucide-react";
 
 function money(value: number): string {
@@ -55,6 +54,50 @@ function compact(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
+function scenarioStatus(outdoor: number, indoor: number, setpoint: number) {
+  const deltaToIndoor = outdoor - indoor;
+  const deltaToSetpoint = outdoor - setpoint;
+
+  if (outdoor <= indoor - 4) {
+    return {
+      mode: "FREE_COOLING",
+      priority: "LOW",
+      label: "Outdoor cooler than indoor",
+      action: "Decrease compressor load and use outside-air economizer",
+      detail: "Bring cooler outdoor air into the terminal, reduce chilled-water demand, and keep fans active.",
+      hvacFactor: 0.58,
+    };
+  }
+  if (deltaToSetpoint <= 3) {
+    return {
+      mode: "BALANCED",
+      priority: "LOW",
+      label: "Near comfort band",
+      action: "Hold setpoint and trim fan speed",
+      detail: "Cooling demand is modest; keep comfort stable and avoid unnecessary compressor cycling.",
+      hvacFactor: 0.82,
+    };
+  }
+  if (outdoor >= 95 || deltaToIndoor >= 18) {
+    return {
+      mode: "EXTREME_COOLING",
+      priority: "HIGH",
+      label: "Very hot outdoor condition",
+      action: "Increase cooling capacity and pre-cool before peak tariff",
+      detail: "Passenger comfort risk is high; stage chillers, defer noncritical charging, and avoid simultaneous peaks.",
+      hvacFactor: 1.34,
+    };
+  }
+  return {
+    mode: "ACTIVE_COOLING",
+    priority: "MEDIUM",
+    label: "Hot outdoor condition",
+    action: "Increase cooling moderately and monitor demand response options",
+    detail: "HVAC load rises with outdoor temperature and passenger density; shift flexible loads if tariff is high.",
+    hvacFactor: 1.08,
+  };
+}
+
 export default function EnergyManagementPage() {
   const { demoNow } = useClock();
   const [airport, setAirport] = useState(AIRPORT_CODES[0]);
@@ -62,12 +105,14 @@ export default function EnergyManagementPage() {
   const [terminals, setTerminals] = useState<EnergyTerminalStatus[]>([]);
   const [profile, setProfile] = useState<EnergyTemperaturePoint[]>([]);
   const [recommendations, setRecommendations] = useState<EnergyRecommendation[]>([]);
-  const [simulation, setSimulation] = useState<EnergySetpointSimulation | null>(null);
-  const [setpointDelta, setSetpointDelta] = useState(2);
-  const [durationHours, setDurationHours] = useState(8);
+  const [scenarioCases, setScenarioCases] = useState<EnergyScenarioCase[]>([]);
+  const [scenarioWindowHours, setScenarioWindowHours] = useState(8);
+  const [scenarioOutdoor, setScenarioOutdoor] = useState(86);
+  const [scenarioIndoor, setScenarioIndoor] = useState(74);
+  const [scenarioSetpoint, setScenarioSetpoint] = useState(72);
+  const [scenarioOccupancy, setScenarioOccupancy] = useState(68);
   const [tariff, setTariff] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [simLoading, setSimLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,11 +121,12 @@ export default function EnergyManagementPage() {
       setLoading(true);
       setError(null);
       try {
-        const [overviewRes, terminalsRes, profileRes, recRes] = await Promise.all([
+        const [overviewRes, terminalsRes, profileRes, recRes, casesRes] = await Promise.all([
           api.getEnergyOverview(),
           api.getEnergyTerminals(airport),
           api.getEnergyTemperatureProfile(airport),
           api.getEnergyRecommendations(airport),
+          api.getEnergyScenarioCases(),
         ]);
         if (cancelled) return;
         setOverview(overviewRes.airports);
@@ -88,6 +134,13 @@ export default function EnergyManagementPage() {
         setTerminals(terminalsRes.terminals);
         setProfile(profileRes.points);
         setRecommendations(recRes.recommendations);
+        setScenarioCases(casesRes.cases);
+        const activeAirport = overviewRes.airports.find((item) => item.airport_code === airport);
+        if (activeAirport) {
+          setScenarioOutdoor(Math.round(activeAirport.outdoor_temp_f));
+          setScenarioSetpoint(Math.round(activeAirport.indoor_setpoint_f));
+          setScenarioIndoor(Math.round(activeAirport.indoor_setpoint_f + 2));
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load energy data");
       } finally {
@@ -99,29 +152,6 @@ export default function EnergyManagementPage() {
       cancelled = true;
     };
   }, [airport, demoNow]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function simulate() {
-      setSimLoading(true);
-      try {
-        const result = await api.simulateEnergySetpoint({
-          airport_code: airport,
-          setpoint_delta_f: setpointDelta,
-          duration_hours: durationHours,
-        });
-        if (!cancelled) setSimulation(result);
-      } catch {
-        if (!cancelled) setSimulation(null);
-      } finally {
-        if (!cancelled) setSimLoading(false);
-      }
-    }
-    simulate();
-    return () => {
-      cancelled = true;
-    };
-  }, [airport, setpointDelta, durationHours, demoNow]);
 
   const selectedAirport = overview.find((item) => item.airport_code === airport);
   const network = useMemo(
@@ -201,6 +231,15 @@ export default function EnergyManagementPage() {
     shiftableKw: terminal.charging_load_kw * 0.45,
     priority: terminal.occupancy_index > 0.72 ? "Hold critical chargers only" : "Shift noncritical charging",
   }));
+  const scenario = scenarioStatus(scenarioOutdoor, scenarioIndoor, scenarioSetpoint);
+  const baseHvacKw = selectedAirport?.hvac_load_kw ?? 0;
+  const occupancyFactor = 0.72 + (scenarioOccupancy / 100) * 0.56;
+  const heatLift = Math.max(scenarioOutdoor - scenarioSetpoint, 0) * 0.018;
+  const scenarioHvacKw = baseHvacKw * scenario.hvacFactor * occupancyFactor * (1 + heatLift);
+  const baselineScenarioKw = baseHvacKw * (0.72 + 0.68 * 0.56);
+  const scenarioDeltaKw = scenarioHvacKw - baselineScenarioKw;
+  const scenarioCostDelta = scenarioDeltaKw * Math.max(tariff, 0.14) * scenarioWindowHours;
+  const scenarioCarbonDelta = scenarioDeltaKw * 0.38 * scenarioWindowHours;
 
   if (error) {
     return (
@@ -272,101 +311,139 @@ export default function EnergyManagementPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <Card className="xl:col-span-2">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-blue-500" />
-                  <CardTitle>Airport Energy Load</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={overview}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="airport_code" />
-                      <YAxis />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: 8,
-                        }}
-                      />
-                      <Bar dataKey="hvac_load_kw" name="HVAC kW" stackId="load" fill="#58A6FF" />
-                      <Bar dataKey="current_load_kw" name="Total kW" fill="#2EA043" opacity={0.35} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card id="setpoint-lab">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-yellow-500" />
-                  <CardTitle>Setpoint Simulator</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Setpoint delta</span>
-                    <span className="font-mono">{setpointDelta > 0 ? "+" : ""}{setpointDelta}°F</span>
+          <Card id="scenario-lab">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Thermometer className="h-4 w-4 text-red-500" />
+                <CardTitle>Live Temperature Scenario Lab</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-muted-foreground">Outdoor temp</span>
+                    <span className="font-mono">{scenarioOutdoor}°F</span>
                   </div>
                   <input
                     type="range"
-                    min={-2}
-                    max={6}
+                    min={35}
+                    max={110}
                     step={1}
-                    value={setpointDelta}
-                    onChange={(event) => setSetpointDelta(Number(event.target.value))}
+                    value={scenarioOutdoor}
+                    onChange={(event) => setScenarioOutdoor(Number(event.target.value))}
                     className="w-full"
                   />
                 </div>
-                <div>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-mono">{durationHours}h</span>
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-muted-foreground">Indoor temp</span>
+                    <span className="font-mono">{scenarioIndoor}°F</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={60}
+                    max={88}
+                    step={1}
+                    value={scenarioIndoor}
+                    onChange={(event) => setScenarioIndoor(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-muted-foreground">Target setpoint</span>
+                    <span className="font-mono">{scenarioSetpoint}°F</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={68}
+                    max={80}
+                    step={1}
+                    value={scenarioSetpoint}
+                    onChange={(event) => setScenarioSetpoint(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-muted-foreground">Occupancy</span>
+                    <span className="font-mono">{scenarioOccupancy}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={100}
+                    step={5}
+                    value={scenarioOccupancy}
+                    onChange={(event) => setScenarioOccupancy(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-muted-foreground">Analysis window</span>
+                    <span className="font-mono">{scenarioWindowHours}h</span>
                   </div>
                   <input
                     type="range"
                     min={1}
                     max={24}
                     step={1}
-                    value={durationHours}
-                    onChange={(event) => setDurationHours(Number(event.target.value))}
+                    value={scenarioWindowHours}
+                    onChange={(event) => setScenarioWindowHours(Number(event.target.value))}
                     className="w-full"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="border border-border rounded-md p-3">
-                    <div className="text-xs text-muted-foreground uppercase">Energy Saved</div>
-                    <div className="text-xl font-bold mt-1">
-                      {simLoading ? "..." : compact(simulation?.saved_energy_kwh ?? 0)}
-                      <span className="text-xs text-muted-foreground ml-1">kWh</span>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-4">
+                <div className="border border-border rounded-md p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Detected condition</div>
+                      <div className="text-xl font-bold mt-1">{scenario.label}</div>
                     </div>
+                    <StatusBadge status={scenario.priority} />
                   </div>
-                  <div className="border border-border rounded-md p-3">
-                    <div className="text-xs text-muted-foreground uppercase">Cost Saved</div>
-                    <div className="text-xl font-bold mt-1">
-                      {simLoading ? "..." : money(simulation?.saved_cost_usd ?? 0)}
+                  <div className="text-sm font-semibold">{scenario.action}</div>
+                  <p className="text-sm text-muted-foreground mt-2">{scenario.detail}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                    <div className="border border-border rounded-md p-3">
+                      <div className="text-xs text-muted-foreground uppercase">Scenario HVAC</div>
+                      <div className="text-lg font-bold mt-1">{compact(scenarioHvacKw)} kW</div>
+                    </div>
+                    <div className="border border-border rounded-md p-3">
+                      <div className="text-xs text-muted-foreground uppercase">Cost impact</div>
+                      <div className={`text-lg font-bold mt-1 ${scenarioCostDelta > 0 ? "text-red-500" : "text-green-500"}`}>
+                        {scenarioCostDelta > 0 ? "+" : ""}{money(scenarioCostDelta)}
+                      </div>
+                    </div>
+                    <div className="border border-border rounded-md p-3">
+                      <div className="text-xs text-muted-foreground uppercase">Carbon impact</div>
+                      <div className={`text-lg font-bold mt-1 ${scenarioCarbonDelta > 0 ? "text-red-500" : "text-green-500"}`}>
+                        {scenarioCarbonDelta > 0 ? "+" : ""}{compact(scenarioCarbonDelta)} kg
+                      </div>
                     </div>
                   </div>
                 </div>
-                {simulation && (
-                  <div className="border border-border rounded-md p-3 text-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-muted-foreground">Comfort risk</span>
-                      <StatusBadge status={simulation.comfort_risk} />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {scenarioCases.map((item) => (
+                    <div key={item.title} className="border border-border rounded-md p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold">{item.title}</div>
+                        <StatusBadge status={item.priority} />
+                      </div>
+                      <div className="text-xs text-blue-500 mt-1">{item.condition}</div>
+                      <div className="text-sm mt-2">{item.decision}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{item.impact}</div>
                     </div>
-                    <p className="text-muted-foreground">{simulation.recommendation}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Card id="load-forecast">

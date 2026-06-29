@@ -352,6 +352,19 @@ class EnergyRecommendationsResponse(BaseModel):
     recommendations: list[EnergyRecommendation]
 
 
+class EnergyScenarioCase(BaseModel):
+    case_id: str
+    title: str
+    condition: str
+    decision: str
+    impact: str
+    priority: str
+
+
+class EnergyScenarioCasesResponse(BaseModel):
+    cases: list[EnergyScenarioCase]
+
+
 class BackendStore:
     def __init__(self, db_path: Path, models_dir: Path) -> None:
         self.db_path = db_path
@@ -1725,6 +1738,46 @@ def energy_temperature_profile(airport: str) -> EnergyTemperatureProfileResponse
         )
 
     return EnergyTemperatureProfileResponse(airport_code=airport, as_of=as_of, points=points)
+
+
+@app.get("/energy/scenario-cases", response_model=EnergyScenarioCasesResponse)
+def energy_scenario_cases() -> EnergyScenarioCasesResponse:
+    return EnergyScenarioCasesResponse(
+        cases=[
+            EnergyScenarioCase(
+                case_id="free_cooling",
+                title="Outdoor cooler than indoor",
+                condition="Outdoor <= indoor - 4°F",
+                decision="Decrease compressor load",
+                impact="Use outside-air economizer/free cooling, reduce chilled-water demand, and keep terminal airflow active.",
+                priority="LOW",
+            ),
+            EnergyScenarioCase(
+                case_id="comfort_band",
+                title="Near comfort band",
+                condition="Outdoor is close to target setpoint",
+                decision="Hold setpoint",
+                impact="Avoid over-cooling, trim fan speed, and keep passenger comfort stable.",
+                priority="LOW",
+            ),
+            EnergyScenarioCase(
+                case_id="active_cooling",
+                title="Hot outdoor condition",
+                condition="Outdoor is above setpoint but below extreme heat threshold",
+                decision="Increase cooling moderately",
+                impact="Increase HVAC capacity only where occupancy is high; shift flexible loads if tariff is high.",
+                priority="MEDIUM",
+            ),
+            EnergyScenarioCase(
+                case_id="extreme_cooling",
+                title="Very hot condition",
+                condition="Outdoor >= 95°F or high thermal lift",
+                decision="Increase cooling and pre-cool",
+                impact="Stage chillers, pre-cool before tariff peak, defer noncritical charging, and protect comfort.",
+                priority="HIGH",
+            ),
+        ]
+    )
 
 
 @app.post("/energy/setpoint-simulation", response_model=EnergySetpointSimulationResponse)
