@@ -2,11 +2,11 @@
 
 > Last updated: 2026-06-29
 
-## Status: COMPLETE + Energy Management V1
+## Status: COMPLETE + Energy Management V1 + Queue Mgmt UX Enhancement
 
 ### What exists
 - **24 API endpoints** — all tested (19 pytest tests, all passing)
-- **9 Next.js pages** — dark/light enterprise ops theme
+- **10 Next.js pages** — dark/light enterprise ops theme (added /shift-handoff)
 - **6 queue areas** — SECURITY_TSA, SECURITY_PRECHECK, CHECKIN, IMMIGRATION, GATE, BAGGAGE
 - **5 airports with terminals** — ATL, DEN, ORD, LAX, DFW
 - **3 ML models** — Prophet, N-BEATS, LSTM (surrogate mode without darts/prophet installed)
@@ -31,13 +31,25 @@ Added in Energy Management V1 (6): energy/overview, energy/terminals, energy/tem
 - Queue Management: `/`, `/journey`, `/queues`, `/forecast`, `/anomalies`, `/staffing`, `/simulator`, `/analytics`
 - Energy Management: `/energy-management`
 
+### Queue Management UX changes (2026-06-29)
+- **Command Center**: synthesized narrative banner, 5-airport status grid (clickable),
+  priority-action panel, auto-refresh (30s/60s), breach-in column on queue table
+- **Queue Intelligence**: critical zone spotlight, vs-typical-this-hour context,
+  colour-coded bar chart with SLA reference line, heatmap area selector with NOW marker
+- **Passenger Journey**: narrative headline, journey health score, % share per stage,
+  bottleneck CTA linking to Staffing/Simulator
+- **Shift Handoff** (`/shift-handoff`): new page — per-airport shift brief, key events
+  timeline, next-shift outlook, 4/8/12-hr selector
+- **useAutoRefresh hook** — shared polling utility
+
 ### What to work on next
 - Docker build test (run `docker compose up` end to end)
 - Install darts + prophet for real ML model training instead of surrogates
 - Add real TSA FOIA data download (instructions in data/etl/download_real_data.md)
 - Production hardening: logging, error monitoring, CORS config
-- Energy Management V2: connect full CityLearn scenario runner or import a
-  CityLearn-compatible airport terminal schema
+- Energy Management V2: connect full CityLearn scenario runner
+- Queue Mgmt UX V2: enhance Anomalies page (timeline view), Analytics CSV export,
+  multi-model forecast overlay
 
 ### Files to read for specific tasks
 - **Adding an endpoint**: read `backend/app.py` (patterns), `backend/config.py` (constants)
