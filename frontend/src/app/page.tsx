@@ -221,33 +221,27 @@ export default function CommandCenter() {
                     </Card>
                   ))}
                   {highAnomalies.slice(0, 2).map((a) => (
-                  <Card
-                    key={a.event_id}
-                    className="border-yellow-500/50 bg-yellow-500/5"
-                  >
-                    <CardContent className="flex items-start gap-3 py-4">
-                      <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-red-500">
-                            {a.airport_code}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {a.area_type
-                              ? AREA_LABELS[a.area_type] || a.area_type
-                              : "Network"}
-                          </span>
-                          <StatusBadge status={a.severity} />
+                    <Card
+                      key={a.event_id}
+                      className="border-yellow-500/50 bg-yellow-500/5"
+                    >
+                      <CardContent className="flex items-start gap-3 py-4">
+                        <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-yellow-500">{a.airport_code}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {a.area_type ? AREA_LABELS[a.area_type] || a.area_type : "Network"}
+                            </span>
+                            <StatusBadge status={a.severity} />
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {a.description || `${a.anomaly_type}: ${a.metric} observed ${a.observed_value.toFixed(1)}`}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {a.description ||
-                            `${a.anomaly_type}: ${a.metric} observed ${a.observed_value.toFixed(1)} (expected ${a.expected_value?.toFixed(1) ?? "N/A"})`}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-                }
+                      </CardContent>
+                    </Card>
+                  ))}
                 </>
               )}
             </div>
