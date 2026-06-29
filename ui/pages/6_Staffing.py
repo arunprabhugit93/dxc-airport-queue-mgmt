@@ -11,6 +11,7 @@ from api_client import (
     DATA_MIN_DATE,
     DATA_MAX_DATE,
     render_alert_banner,
+    render_theme_toggle,
     render_sidebar,
     get_staffing,
 )
@@ -45,6 +46,7 @@ st.markdown(
     'AI-driven staffing recommendations to meet SLA targets while optimising costs</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 selected = airport if airport != "All" else "ATL"

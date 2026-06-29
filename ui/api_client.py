@@ -267,20 +267,6 @@ def render_sidebar() -> tuple[str, str]:
             unsafe_allow_html=True,
         )
 
-        # Theme toggle
-        mode = st.session_state.get("theme_mode", "dark")
-        new_mode = st.toggle(
-            "Light mode" if mode == "dark" else "Dark mode",
-            value=(mode == "light"),
-            key="sb_theme_toggle",
-        )
-        target = "light" if new_mode else "dark"
-        if target != mode:
-            st.session_state["theme_mode"] = target
-            st.rerun()
-
-        st.divider()
-
         # Airport selector
         st.markdown(
             f'<div style="font-size:0.7em;color:{p["text_muted"]};text-transform:uppercase;'
@@ -390,6 +376,22 @@ def get_scorecard(_demo_now: str, airport_code: str, target_date: str | None = N
         return _get(f"/airports/{airport_code}/scorecard", params or None)
     except Exception:
         return None
+
+
+def render_theme_toggle() -> None:
+    """Render a light/dark theme toggle in the top-right corner of the page."""
+    mode = st.session_state.get("theme_mode", "dark")
+    _, col_toggle = st.columns([8, 1])
+    with col_toggle:
+        new_mode = st.toggle(
+            "Light" if mode == "dark" else "Dark",
+            value=(mode == "light"),
+            key="topbar_theme",
+        )
+        target = "light" if new_mode else "dark"
+        if target != mode:
+            st.session_state["theme_mode"] = target
+            st.rerun()
 
 
 def render_alert_banner(demo_now: str, airport: str | None = None) -> None:

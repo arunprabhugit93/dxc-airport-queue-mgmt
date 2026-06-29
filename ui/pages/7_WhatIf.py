@@ -5,7 +5,12 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import streamlit as st
 
-from api_client import render_alert_banner, render_sidebar, simulate_what_if
+from api_client import (
+    render_alert_banner,
+    render_theme_toggle,
+    render_sidebar,
+    simulate_what_if,
+)
 from theme import (
     inject_theme,
     section_header,
@@ -38,6 +43,7 @@ st.markdown(
     'Test operational changes before implementing them -- compare scenarios side by side</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 selected = airport if airport != "All" else "ATL"

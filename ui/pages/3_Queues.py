@@ -13,6 +13,7 @@ from api_client import (
     AREA_TYPES,
     SLA_COLOUR,
     render_alert_banner,
+    render_theme_toggle,
     render_sidebar,
     get_all_area_queues,
     get_heatmap,
@@ -52,6 +53,7 @@ st.markdown(
     'Deep-dive into queue performance across all areas and time patterns</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 selected = airport if airport != "All" else "ATL"

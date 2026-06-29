@@ -9,6 +9,7 @@ import streamlit as st
 from api_client import (
     SEVERITY_COLOUR,
     render_alert_banner,
+    render_theme_toggle,
     render_sidebar,
     get_anomalies,
     severity_badge_html,
@@ -46,6 +47,7 @@ st.markdown(
     'Real-time detection and analysis of operational anomalies</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 with st.sidebar:

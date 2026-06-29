@@ -9,6 +9,7 @@ import streamlit as st
 from api_client import (
     AIRPORT_CODES,
     render_alert_banner,
+    render_theme_toggle,
     render_sidebar,
     get_forecast,
     get_models,
@@ -44,6 +45,7 @@ st.markdown(
     'AI-powered wait-time forecasts with confidence bands and breach warnings</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 try:

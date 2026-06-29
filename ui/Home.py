@@ -11,6 +11,7 @@ from api_client import (
     SLA_COLOUR,
     render_alert_banner,
     render_sidebar,
+    render_theme_toggle,
     get_airports,
     get_forecast,
     get_queues_current,
@@ -46,14 +47,21 @@ st.set_page_config(page_title="Operations Command Center", layout="wide")
 inject_theme()
 airport, demo_now = render_sidebar()
 
-# Page header
+# Page header with theme toggle top-right
+from theme import t as _t
+_p = _t()
+_hdr_left, _hdr_right = st.columns([6, 1])
+with _hdr_left:
+    st.markdown(
+        f'<h1 style="color:{_p["text_primary"]};font-weight:700;margin-bottom:4px;">'
+        f'Operations Command Center</h1>',
+        unsafe_allow_html=True,
+    )
+with _hdr_right:
+    render_theme_toggle()
 st.markdown(
-    '<h1 style="color:#FAFAFA;font-weight:700;margin-bottom:4px;">Operations Command Center</h1>',
-    unsafe_allow_html=True,
-)
-st.markdown(
-    '<p style="color:#8B949E;font-size:0.95em;margin-bottom:24px;">'
-    'Real-time network overview, SLA compliance, and actionable recommendations</p>',
+    f'<p style="color:{_p["text_secondary"]};font-size:0.95em;margin-bottom:24px;">'
+    f'Real-time network overview, SLA compliance, and actionable recommendations</p>',
     unsafe_allow_html=True,
 )
 

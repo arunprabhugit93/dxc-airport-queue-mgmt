@@ -8,6 +8,7 @@ import streamlit as st
 from api_client import (
     AIRPORT_CODES,
     render_alert_banner,
+    render_theme_toggle,
     render_sidebar,
     get_passenger_journey,
 )
@@ -43,6 +44,7 @@ st.markdown(
     'End-to-end passenger experience from curb to gate -- where time is spent, where bottlenecks form</p>',
     unsafe_allow_html=True,
 )
+render_theme_toggle()
 render_alert_banner(demo_now, airport)
 
 with st.sidebar:
