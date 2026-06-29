@@ -36,8 +36,8 @@ interface SimResults {
 }
 
 const METRIC_LABELS: Record<string, string> = {
-  mean_wait: "Mean Wait (min)",
-  p95_wait: "P95 Wait (min)",
+  mean_wait_min: "Mean Wait (min)",
+  p95_wait_min: "P95 Wait (min)",
   max_queue_len: "Max Queue Length",
   lane_utilisation: "Lane Utilisation",
   sla_breach_min: "SLA Breach (min)",
@@ -93,7 +93,7 @@ export default function SimulatorPage() {
 
   // Verdict: improvement if mean_wait decreased
   const isImprovement = results
-    ? (results.delta.mean_wait ?? 0) < 0
+    ? (results.delta.mean_wait_min ?? 0) < 0
     : false;
 
   function getDeltaArrow(delta: number) {
@@ -258,9 +258,9 @@ export default function SimulatorPage() {
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Mean wait {isImprovement ? "decreased" : "increased"} by {Math.abs(results.delta.mean_wait ?? 0).toFixed(1)} min
-              {results.delta.p95_wait !== undefined && (
-                <> &middot; P95 wait {(results.delta.p95_wait ?? 0) < 0 ? "decreased" : "increased"} by {Math.abs(results.delta.p95_wait ?? 0).toFixed(1)} min</>
+              Mean wait {isImprovement ? "decreased" : "increased"} by {Math.abs(results.delta.mean_wait_min ?? 0).toFixed(1)} min
+              {results.delta.p95_wait_min !== undefined && (
+                <> &middot; P95 {(results.delta.p95_wait_min ?? 0) < 0 ? "decreased" : "increased"} by {Math.abs(results.delta.p95_wait_min ?? 0).toFixed(1)} min</>
               )}
             </p>
           </div>
@@ -275,7 +275,9 @@ export default function SimulatorPage() {
                 const delta = results.delta[key] ?? 0;
                 const format = key === "lane_utilisation"
                   ? (v: number) => `${(v * 100).toFixed(0)}%`
-                  : (v: number) => v.toFixed(1);
+                  : key === "max_queue_len" || key === "sla_breach_min"
+                    ? (v: number) => Math.round(v).toString()
+                    : (v: number) => `${v.toFixed(1)}`;
                 return (
                   <div key={key} className="space-y-2">
                     <MetricCard
