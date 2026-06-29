@@ -115,6 +115,64 @@ export interface NetworkAirportHealth {
   grade: string;
 }
 
+export interface EnergyAirportSummary {
+  airport_code: string;
+  outdoor_temp_f: number;
+  indoor_setpoint_f: number;
+  current_load_kw: number;
+  hvac_load_kw: number;
+  daily_energy_kwh: number;
+  daily_cost_usd: number;
+  carbon_kg: number;
+  peak_risk: string;
+  savings_opportunity_pct: number;
+}
+
+export interface EnergyTerminalStatus {
+  terminal: string;
+  occupancy_index: number;
+  outdoor_temp_f: number;
+  indoor_setpoint_f: number;
+  current_load_kw: number;
+  hvac_load_kw: number;
+  lighting_load_kw: number;
+  plug_load_kw: number;
+  charging_load_kw: number;
+  comfort_status: string;
+  optimization_action: string;
+}
+
+export interface EnergyTemperaturePoint {
+  hour: number;
+  outdoor_temp_f: number;
+  occupancy_index: number;
+  hvac_load_kw: number;
+  total_load_kw: number;
+}
+
+export interface EnergySetpointSimulation {
+  airport_code: string;
+  baseline_setpoint_f: number;
+  scenario_setpoint_f: number;
+  duration_hours: number;
+  baseline_energy_kwh: number;
+  scenario_energy_kwh: number;
+  saved_energy_kwh: number;
+  saved_cost_usd: number;
+  carbon_reduction_kg: number;
+  comfort_risk: string;
+  recommendation: string;
+}
+
+export interface EnergyRecommendation {
+  priority: string;
+  airport_code: string;
+  area: string;
+  action: string;
+  reason: string;
+  estimated_savings_usd: number;
+}
+
 // API functions
 export const api = {
   getHealth: () => get<{ status: string; db_loaded: boolean; models_loaded: string[]; demo_now: string }>("/health"),
@@ -185,6 +243,27 @@ export const api = {
 
   getTerminals: (airport: string) =>
     get<{ airport_code: string; as_of: string; terminals: { terminal: string; estimated_pax: number; estimated_wait_min: number; sla_status: string }[] }>(`/airports/${airport}/terminals`),
+
+  getEnergyOverview: (airport?: string) => {
+    const params: Record<string, string> = {};
+    if (airport && airport !== "All") params.airport = airport;
+    return get<{ as_of: string; tariff_usd_per_kwh: number; network_load_kw: number; network_daily_cost_usd: number; network_carbon_kg: number; airports: EnergyAirportSummary[] }>("/energy/overview", params);
+  },
+
+  getEnergyTerminals: (airport: string) =>
+    get<{ airport_code: string; as_of: string; terminals: EnergyTerminalStatus[] }>("/energy/terminals", { airport }),
+
+  getEnergyTemperatureProfile: (airport: string) =>
+    get<{ airport_code: string; as_of: string; points: EnergyTemperaturePoint[] }>("/energy/temperature-profile", { airport }),
+
+  simulateEnergySetpoint: (body: Record<string, unknown>) =>
+    post<EnergySetpointSimulation>("/energy/setpoint-simulation", body),
+
+  getEnergyRecommendations: (airport?: string) => {
+    const params: Record<string, string> = {};
+    if (airport && airport !== "All") params.airport = airport;
+    return get<{ as_of: string; recommendations: EnergyRecommendation[] }>("/energy/recommendations", params);
+  },
 };
 
 export const AIRPORT_CODES = ["ATL", "DEN", "ORD", "LAX", "DFW"];

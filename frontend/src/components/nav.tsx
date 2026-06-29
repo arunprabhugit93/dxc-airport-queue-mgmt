@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useClock } from "./clock-context";
@@ -21,17 +21,25 @@ import {
   Radio,
   Wrench,
   ShoppingBag,
+  Zap,
+  Gauge,
+  Factory,
+  Leaf,
+  BatteryCharging,
+  Thermometer,
+  DollarSign,
+  Activity,
   ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect } from "react";
 
 const modules = [
-  { id: "queues", label: "Queue Mgmt", icon: Layers, active: true },
+  { id: "queues", label: "Queue Mgmt", icon: Layers, active: true, href: "/" },
   { id: "flights", label: "Flight Ops", icon: Plane, active: false },
   { id: "baggage", label: "Baggage", icon: Luggage, active: false },
   { id: "comms", label: "Comms", icon: Radio, active: false },
   { id: "maintenance", label: "Maintenance", icon: Wrench, active: false },
+  { id: "energy-management", label: "Energy", icon: Zap, active: true, href: "/energy-management" },
   { id: "retail", label: "Retail", icon: ShoppingBag, active: false },
 ];
 
@@ -46,11 +54,27 @@ const queuePages = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
+const energyPages = [
+  { href: "/energy-management#load-forecast", label: "Load Forecast", icon: TrendingUp },
+  { href: "/energy-management#setpoint-lab", label: "Setpoint Lab", icon: Thermometer },
+  { href: "/energy-management#demand-response", label: "Demand Response", icon: Gauge },
+  { href: "/energy-management#carbon-renewables", label: "Carbon & Renewables", icon: Leaf },
+  { href: "/energy-management#tariff-control", label: "Tariff Control", icon: DollarSign },
+  { href: "/energy-management#asset-health", label: "Asset Health", icon: Factory },
+  { href: "/energy-management#charging", label: "GSE Charging", icon: BatteryCharging },
+  { href: "/energy-management#comfort", label: "Comfort Compliance", icon: Thermometer },
+  { href: "/energy-management#recommendations", label: "Recommendations", icon: Activity },
+];
+
 export function TopBar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -63,22 +87,32 @@ export function TopBar() {
         <div className="h-5 w-px bg-border" />
 
         <nav className="flex items-center gap-1 overflow-x-auto flex-1">
-          {modules.map((m) => (
-            <button
-              key={m.id}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors",
-                m.active
-                  ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+          {modules.map((m) => {
+            const content = (
+              <>
+                <m.icon className="h-3.5 w-3.5" />
+                {m.label}
+                {!m.active && <span className="text-[10px] opacity-50">Soon</span>}
+              </>
+            );
+            const className = cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors",
+              m.active && (m.id === "energy-management" ? pathname.startsWith("/energy-management") : !pathname.startsWith("/energy-management"))
+                ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/15"
+                : m.active
+                  ? "text-muted-foreground hover:text-foreground hover:bg-muted"
                   : "text-muted-foreground/50 cursor-not-allowed"
-              )}
-              disabled={!m.active}
-            >
-              <m.icon className="h-3.5 w-3.5" />
-              {m.label}
-              {!m.active && <span className="text-[10px] opacity-50">Soon</span>}
-            </button>
-          ))}
+            );
+            return m.href ? (
+              <Link key={m.id} href={m.href} className={className}>
+                {content}
+              </Link>
+            ) : (
+              <button key={m.id} className={className} disabled={!m.active}>
+                {content}
+              </button>
+            );
+          })}
         </nav>
 
         {mounted && (
@@ -96,17 +130,21 @@ export function TopBar() {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const isEnergy = pathname.startsWith("/energy-management");
+  const pages = isEnergy ? energyPages : queuePages;
+  const title = isEnergy ? "Energy Management" : "Queue Management";
+  const TitleIcon = isEnergy ? Zap : Layers;
 
   return (
     <aside className="w-56 shrink-0 border-r border-border bg-muted/30 flex flex-col">
       <div className="p-3 flex-1 overflow-y-auto">
         <div className="flex items-center gap-1.5 px-2 py-1.5 mb-2">
-          <Layers className="h-4 w-4 text-blue-500" />
-          <span className="text-xs font-bold text-foreground uppercase tracking-wider">Queue Management</span>
+          <TitleIcon className="h-4 w-4 text-blue-500" />
+          <span className="text-xs font-bold text-foreground uppercase tracking-wider">{title}</span>
         </div>
         <nav className="flex flex-col gap-0.5">
-          {queuePages.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+          {pages.map(({ href, label, icon: Icon }) => {
+            const active = isEnergy ? false : pathname === href;
             return (
               <Link
                 key={href}
@@ -196,4 +234,3 @@ function ClockSelector() {
     </div>
   );
 }
-

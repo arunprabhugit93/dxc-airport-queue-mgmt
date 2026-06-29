@@ -280,3 +280,62 @@ def test_network_health() -> None:
     for a in data["airports"]:
         assert a["airport_code"] in ("ATL", "DEN", "ORD", "LAX", "DFW")
         assert a["grade"] in ("A", "B", "C", "D", "F")
+
+
+def test_energy_overview_returns_airport_loads() -> None:
+    with _client() as client:
+        response = client.get("/energy/overview")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["network_load_kw"] > 0
+    assert data["network_daily_cost_usd"] > 0
+    assert len(data["airports"]) == 5
+    for airport in data["airports"]:
+        assert airport["airport_code"] in ("ATL", "DEN", "ORD", "LAX", "DFW")
+        assert airport["current_load_kw"] > 0
+        assert airport["hvac_load_kw"] > 0
+        assert airport["peak_risk"] in ("LOW", "MEDIUM", "HIGH")
+
+
+def test_energy_terminal_and_temperature_profile() -> None:
+    with _client() as client:
+        terminals = client.get("/energy/terminals", params={"airport": "ATL"})
+        profile = client.get("/energy/temperature-profile", params={"airport": "ATL"})
+
+    assert terminals.status_code == 200
+    terminal_data = terminals.json()
+    assert terminal_data["airport_code"] == "ATL"
+    assert len(terminal_data["terminals"]) == 2
+    for terminal in terminal_data["terminals"]:
+        assert terminal["current_load_kw"] > 0
+        assert terminal["comfort_status"] in ("OK", "WATCH", "RISK")
+        assert "optimization_action" in terminal
+
+    assert profile.status_code == 200
+    profile_data = profile.json()
+    assert len(profile_data["points"]) == 24
+    assert all(point["total_load_kw"] > 0 for point in profile_data["points"])
+
+
+def test_energy_setpoint_simulation_and_recommendations() -> None:
+    with _client() as client:
+        simulation = client.post(
+            "/energy/setpoint-simulation",
+            json={"airport_code": "ATL", "setpoint_delta_f": 2.0, "duration_hours": 8},
+        )
+        recommendations = client.get("/energy/recommendations")
+
+    assert simulation.status_code == 200
+    sim_data = simulation.json()
+    assert sim_data["airport_code"] == "ATL"
+    assert sim_data["scenario_setpoint_f"] == 74.0
+    assert sim_data["saved_energy_kwh"] >= 0
+    assert sim_data["comfort_risk"] in ("LOW", "MEDIUM", "HIGH")
+
+    assert recommendations.status_code == 200
+    rec_data = recommendations.json()
+    assert len(rec_data["recommendations"]) > 0
+    for rec in rec_data["recommendations"]:
+        assert rec["priority"] in ("HIGH", "MEDIUM", "LOW")
+        assert rec["estimated_savings_usd"] >= 0

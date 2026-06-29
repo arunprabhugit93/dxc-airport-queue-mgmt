@@ -13,6 +13,8 @@ const colorMap: Record<string, string> = {
   POOR: "bg-red-600 text-white",
   CRITICAL: "bg-red-700 text-white",
   MODERATE: "bg-blue-500 text-white",
+  WATCH: "bg-yellow-600 text-white",
+  RISK: "bg-red-600 text-white",
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

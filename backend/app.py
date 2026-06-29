@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta
+import math
 from pathlib import Path
 
 import duckdb
@@ -259,6 +260,96 @@ class ClockResponse(BaseModel):
 
 class ClockUpdateRequest(BaseModel):
     demo_now: datetime
+
+
+class EnergyAirportSummary(BaseModel):
+    airport_code: str
+    outdoor_temp_f: float
+    indoor_setpoint_f: float
+    current_load_kw: float
+    hvac_load_kw: float
+    daily_energy_kwh: float
+    daily_cost_usd: float
+    carbon_kg: float
+    peak_risk: str
+    savings_opportunity_pct: float
+
+
+class EnergyOverviewResponse(BaseModel):
+    as_of: datetime
+    tariff_usd_per_kwh: float
+    network_load_kw: float
+    network_daily_cost_usd: float
+    network_carbon_kg: float
+    airports: list[EnergyAirportSummary]
+
+
+class EnergyTerminalStatus(BaseModel):
+    terminal: str
+    occupancy_index: float
+    outdoor_temp_f: float
+    indoor_setpoint_f: float
+    current_load_kw: float
+    hvac_load_kw: float
+    lighting_load_kw: float
+    plug_load_kw: float
+    charging_load_kw: float
+    comfort_status: str
+    optimization_action: str
+
+
+class EnergyTerminalResponse(BaseModel):
+    airport_code: str
+    as_of: datetime
+    terminals: list[EnergyTerminalStatus]
+
+
+class EnergyTemperaturePoint(BaseModel):
+    hour: int
+    outdoor_temp_f: float
+    occupancy_index: float
+    hvac_load_kw: float
+    total_load_kw: float
+
+
+class EnergyTemperatureProfileResponse(BaseModel):
+    airport_code: str
+    as_of: datetime
+    points: list[EnergyTemperaturePoint]
+
+
+class EnergySetpointSimulationRequest(BaseModel):
+    airport_code: str
+    setpoint_delta_f: float = Field(ge=-4.0, le=6.0)
+    duration_hours: int = Field(default=8, ge=1, le=24)
+
+
+class EnergySetpointSimulationResponse(BaseModel):
+    airport_code: str
+    baseline_setpoint_f: float
+    scenario_setpoint_f: float
+    duration_hours: int
+    baseline_energy_kwh: float
+    scenario_energy_kwh: float
+    saved_energy_kwh: float
+    saved_cost_usd: float
+    carbon_reduction_kg: float
+    comfort_risk: str
+    recommendation: str
+
+
+class EnergyRecommendation(BaseModel):
+    priority: str
+    airport_code: str
+    area: str
+    action: str
+    reason: str
+    estimated_savings_usd: float
+
+
+class EnergyRecommendationsResponse(BaseModel):
+    as_of: datetime
+    recommendations: list[EnergyRecommendation]
 
 
 class BackendStore:
@@ -543,6 +634,133 @@ def _scenario_metrics(
         lane_utilisation=result.lane_utilisation,
         sla_breach_min=result.sla_breach_min,
         sla_target_min=config.SLA_TARGET_MIN,
+    )
+
+
+ENERGY_BASE_SETPOINT_F = 72.0
+ENERGY_CARBON_KG_PER_KWH = 0.38
+ENERGY_NORMAL_TARIFF = 0.14
+ENERGY_PEAK_TARIFF = 0.24
+
+
+def _energy_tariff(ts: datetime) -> float:
+    return ENERGY_PEAK_TARIFF if 14 <= ts.hour <= 19 else ENERGY_NORMAL_TARIFF
+
+
+def _outdoor_temp_f(airport: str, ts: datetime, hour: int | None = None) -> float:
+    airport_base = {
+        "ATL": 76.0,
+        "DEN": 66.0,
+        "ORD": 64.0,
+        "LAX": 70.0,
+        "DFW": 82.0,
+    }
+    h = ts.hour if hour is None else hour
+    day_angle = (ts.timetuple().tm_yday / 365.0) * 2.0 * math.pi
+    seasonal = 13.0 * math.sin(day_angle - 1.35)
+    diurnal = 9.0 * math.sin(((h - 8) / 24.0) * 2.0 * math.pi)
+    return round(airport_base[airport] + seasonal + diurnal, 1)
+
+
+def _terminal_energy_components(
+    *,
+    airport: str,
+    terminal_index: int,
+    terminal_count: int,
+    ts: datetime,
+    occupancy_index: float,
+    setpoint_f: float = ENERGY_BASE_SETPOINT_F,
+    hour: int | None = None,
+) -> dict[str, float | str]:
+    outdoor_temp = _outdoor_temp_f(airport, ts, hour)
+    terminal_scale = 0.86 + (terminal_index % max(terminal_count, 1)) * 0.07
+    base_kw_by_airport = {"ATL": 1180.0, "DEN": 1040.0, "ORD": 1080.0, "LAX": 980.0, "DFW": 1120.0}
+    base_kw = base_kw_by_airport[airport] * terminal_scale
+    cooling_degree = max(outdoor_temp - setpoint_f, 0.0)
+    heat_factor = 1.0 + cooling_degree * 0.045
+    occupancy_factor = 0.72 + occupancy_index * 0.48
+    total_load = base_kw * heat_factor * occupancy_factor
+    hvac_share = min(0.62, max(0.38, 0.40 + cooling_degree * 0.012))
+    hvac_load = total_load * hvac_share
+    lighting_load = total_load * 0.18
+    charging_load = total_load * (0.07 + occupancy_index * 0.04)
+    plug_load = max(total_load - hvac_load - lighting_load - charging_load, 0.0)
+
+    if setpoint_f >= 77.0 and occupancy_index >= 0.72:
+        comfort_status = "RISK"
+    elif setpoint_f >= 75.0 or outdoor_temp >= 92.0:
+        comfort_status = "WATCH"
+    else:
+        comfort_status = "OK"
+
+    return {
+        "outdoor_temp_f": round(outdoor_temp, 1),
+        "current_load_kw": round(total_load, 1),
+        "hvac_load_kw": round(hvac_load, 1),
+        "lighting_load_kw": round(lighting_load, 1),
+        "plug_load_kw": round(plug_load, 1),
+        "charging_load_kw": round(charging_load, 1),
+        "comfort_status": comfort_status,
+    }
+
+
+def _current_airport_occupancy(
+    con: duckdb.DuckDBPyConnection,
+    airport: str,
+    as_of: datetime,
+) -> float:
+    obs_date, obs_hour = _hour_parts(as_of)
+    row = con.execute(
+        """
+        SELECT SUM(pax)
+        FROM tsa_throughput
+        WHERE grain = 'checkpoint_hour'
+          AND airport_code = ?
+          AND obs_date = ?
+          AND obs_hour = ?
+        """,
+        [airport, obs_date, obs_hour],
+    ).fetchone()
+    pax = 0 if row is None or row[0] is None else int(row[0])
+    cap = 12500 if airport in {"ATL", "DFW"} else 10500
+    return round(min(1.0, max(0.10, pax / cap)), 3)
+
+
+def _energy_airport_summary(
+    con: duckdb.DuckDBPyConnection,
+    airport: str,
+    as_of: datetime,
+) -> EnergyAirportSummary:
+    terminals = config.AIRPORTS[airport].get("terminals", [airport])
+    occupancy = _current_airport_occupancy(con, airport, as_of)
+    terminal_payloads = [
+        _terminal_energy_components(
+            airport=airport,
+            terminal_index=index,
+            terminal_count=len(terminals),
+            ts=as_of,
+            occupancy_index=min(1.0, occupancy * (0.88 + index * 0.05)),
+        )
+        for index, _ in enumerate(terminals)
+    ]
+    current_load = sum(float(item["current_load_kw"]) for item in terminal_payloads)
+    hvac_load = sum(float(item["hvac_load_kw"]) for item in terminal_payloads)
+    daily_energy = current_load * 18.0
+    tariff = _energy_tariff(as_of)
+    peak_risk = "HIGH" if as_of.hour in range(14, 20) and current_load > 5200 else "MEDIUM" if current_load > 4300 else "LOW"
+    savings_opportunity = min(18.0, max(4.0, (hvac_load / max(current_load, 1.0)) * 24.0))
+
+    return EnergyAirportSummary(
+        airport_code=airport,
+        outdoor_temp_f=_outdoor_temp_f(airport, as_of),
+        indoor_setpoint_f=ENERGY_BASE_SETPOINT_F,
+        current_load_kw=round(current_load, 1),
+        hvac_load_kw=round(hvac_load, 1),
+        daily_energy_kwh=round(daily_energy, 1),
+        daily_cost_usd=round(daily_energy * tariff, 2),
+        carbon_kg=round(daily_energy * ENERGY_CARBON_KG_PER_KWH, 1),
+        peak_risk=peak_risk,
+        savings_opportunity_pct=round(savings_opportunity, 1),
     )
 
 
@@ -1387,6 +1605,261 @@ def models() -> ModelsResponse:
             ),
         ]
     )
+
+
+@app.get("/energy/overview", response_model=EnergyOverviewResponse)
+def energy_overview(airport: str | None = None) -> EnergyOverviewResponse:
+    if airport is not None:
+        _validate_airport(airport)
+
+    store = _store()
+    _ensure_ready(store)
+    as_of = _current_ts(store)
+    airports_to_check = [airport] if airport and airport != "ALL" else config.AIRPORT_CODES
+
+    with store.connect() as con:
+        summaries = [
+            _energy_airport_summary(con, airport_code, as_of)
+            for airport_code in airports_to_check
+        ]
+
+    network_load = sum(item.current_load_kw for item in summaries)
+    network_cost = sum(item.daily_cost_usd for item in summaries)
+    network_carbon = sum(item.carbon_kg for item in summaries)
+
+    return EnergyOverviewResponse(
+        as_of=as_of,
+        tariff_usd_per_kwh=_energy_tariff(as_of),
+        network_load_kw=round(network_load, 1),
+        network_daily_cost_usd=round(network_cost, 2),
+        network_carbon_kg=round(network_carbon, 1),
+        airports=summaries,
+    )
+
+
+@app.get("/energy/terminals", response_model=EnergyTerminalResponse)
+def energy_terminals(airport: str) -> EnergyTerminalResponse:
+    _validate_airport(airport)
+
+    store = _store()
+    _ensure_ready(store)
+    as_of = _current_ts(store)
+    terminals = config.AIRPORTS[airport].get("terminals", [airport])
+
+    with store.connect() as con:
+        occupancy = _current_airport_occupancy(con, airport, as_of)
+
+    payload: list[EnergyTerminalStatus] = []
+    for index, terminal in enumerate(terminals):
+        terminal_occupancy = round(min(1.0, max(0.08, occupancy * (0.88 + index * 0.05))), 3)
+        components = _terminal_energy_components(
+            airport=airport,
+            terminal_index=index,
+            terminal_count=len(terminals),
+            ts=as_of,
+            occupancy_index=terminal_occupancy,
+        )
+        hvac_load = float(components["hvac_load_kw"])
+        action = "Maintain current setpoint"
+        if terminal_occupancy < 0.35 and hvac_load > 450:
+            action = "Raise setpoint 2°F in low-occupancy zone"
+        elif _energy_tariff(as_of) >= ENERGY_PEAK_TARIFF and hvac_load > 650:
+            action = "Pre-cool before next tariff peak"
+        elif float(components["outdoor_temp_f"]) > 90.0:
+            action = "Stage cooling load across adjacent terminals"
+
+        payload.append(
+            EnergyTerminalStatus(
+                terminal=terminal,
+                occupancy_index=terminal_occupancy,
+                outdoor_temp_f=float(components["outdoor_temp_f"]),
+                indoor_setpoint_f=ENERGY_BASE_SETPOINT_F,
+                current_load_kw=float(components["current_load_kw"]),
+                hvac_load_kw=hvac_load,
+                lighting_load_kw=float(components["lighting_load_kw"]),
+                plug_load_kw=float(components["plug_load_kw"]),
+                charging_load_kw=float(components["charging_load_kw"]),
+                comfort_status=str(components["comfort_status"]),
+                optimization_action=action,
+            )
+        )
+
+    return EnergyTerminalResponse(airport_code=airport, as_of=as_of, terminals=payload)
+
+
+@app.get("/energy/temperature-profile", response_model=EnergyTemperatureProfileResponse)
+def energy_temperature_profile(airport: str) -> EnergyTemperatureProfileResponse:
+    _validate_airport(airport)
+
+    store = _store()
+    _ensure_ready(store)
+    as_of = _current_ts(store)
+
+    with store.connect() as con:
+        base_occupancy = _current_airport_occupancy(con, airport, as_of)
+
+    points: list[EnergyTemperaturePoint] = []
+    terminals = config.AIRPORTS[airport].get("terminals", [airport])
+    for hour in range(24):
+        curve = 0.62 + 0.38 * max(0.0, math.sin(((hour - 5) / 16.0) * math.pi))
+        occupancy = round(min(1.0, max(0.08, base_occupancy * curve * 1.7)), 3)
+        terminal_components = [
+            _terminal_energy_components(
+                airport=airport,
+                terminal_index=index,
+                terminal_count=len(terminals),
+                ts=as_of,
+                occupancy_index=occupancy,
+                hour=hour,
+            )
+            for index, _ in enumerate(terminals)
+        ]
+        points.append(
+            EnergyTemperaturePoint(
+                hour=hour,
+                outdoor_temp_f=_outdoor_temp_f(airport, as_of, hour),
+                occupancy_index=occupancy,
+                hvac_load_kw=round(sum(float(item["hvac_load_kw"]) for item in terminal_components), 1),
+                total_load_kw=round(sum(float(item["current_load_kw"]) for item in terminal_components), 1),
+            )
+        )
+
+    return EnergyTemperatureProfileResponse(airport_code=airport, as_of=as_of, points=points)
+
+
+@app.post("/energy/setpoint-simulation", response_model=EnergySetpointSimulationResponse)
+def energy_setpoint_simulation(payload: EnergySetpointSimulationRequest) -> EnergySetpointSimulationResponse:
+    airport = _validate_airport(payload.airport_code)
+
+    store = _store()
+    _ensure_ready(store)
+    as_of = _current_ts(store)
+    terminals = config.AIRPORTS[airport].get("terminals", [airport])
+    scenario_setpoint = ENERGY_BASE_SETPOINT_F + payload.setpoint_delta_f
+
+    with store.connect() as con:
+        occupancy = _current_airport_occupancy(con, airport, as_of)
+
+    baseline_load = 0.0
+    scenario_load = 0.0
+    for hour_offset in range(payload.duration_hours):
+        hour = (as_of.hour + hour_offset) % 24
+        for index, _ in enumerate(terminals):
+            terminal_occupancy = min(1.0, occupancy * (0.88 + index * 0.05))
+            baseline = _terminal_energy_components(
+                airport=airport,
+                terminal_index=index,
+                terminal_count=len(terminals),
+                ts=as_of,
+                occupancy_index=terminal_occupancy,
+                setpoint_f=ENERGY_BASE_SETPOINT_F,
+                hour=hour,
+            )
+            scenario = _terminal_energy_components(
+                airport=airport,
+                terminal_index=index,
+                terminal_count=len(terminals),
+                ts=as_of,
+                occupancy_index=terminal_occupancy,
+                setpoint_f=scenario_setpoint,
+                hour=hour,
+            )
+            baseline_load += float(baseline["current_load_kw"])
+            scenario_load += float(scenario["current_load_kw"])
+
+    saved_energy = round(baseline_load - scenario_load, 1)
+    saved_cost = round(saved_energy * _energy_tariff(as_of), 2)
+    carbon_reduction = round(saved_energy * ENERGY_CARBON_KG_PER_KWH, 1)
+    comfort_risk = "HIGH" if scenario_setpoint >= 78.0 else "MEDIUM" if scenario_setpoint >= 76.0 else "LOW"
+    if saved_energy > 0 and comfort_risk == "LOW":
+        recommendation = "Approve setpoint change for the selected window."
+    elif saved_energy > 0:
+        recommendation = "Apply only to low-occupancy zones and monitor comfort."
+    else:
+        recommendation = "Do not lower setpoint for savings; it increases HVAC demand."
+
+    return EnergySetpointSimulationResponse(
+        airport_code=airport,
+        baseline_setpoint_f=ENERGY_BASE_SETPOINT_F,
+        scenario_setpoint_f=round(scenario_setpoint, 1),
+        duration_hours=payload.duration_hours,
+        baseline_energy_kwh=round(baseline_load, 1),
+        scenario_energy_kwh=round(scenario_load, 1),
+        saved_energy_kwh=saved_energy,
+        saved_cost_usd=saved_cost,
+        carbon_reduction_kg=carbon_reduction,
+        comfort_risk=comfort_risk,
+        recommendation=recommendation,
+    )
+
+
+@app.get("/energy/recommendations", response_model=EnergyRecommendationsResponse)
+def energy_recommendations(airport: str | None = None) -> EnergyRecommendationsResponse:
+    if airport is not None:
+        _validate_airport(airport)
+
+    store = _store()
+    _ensure_ready(store)
+    as_of = _current_ts(store)
+    airports_to_check = [airport] if airport and airport != "ALL" else config.AIRPORT_CODES
+    recommendations: list[EnergyRecommendation] = []
+
+    with store.connect() as con:
+        summaries = [
+            _energy_airport_summary(con, airport_code, as_of)
+            for airport_code in airports_to_check
+        ]
+
+    for summary in summaries:
+        if summary.peak_risk == "HIGH":
+            recommendations.append(
+                EnergyRecommendation(
+                    priority="HIGH",
+                    airport_code=summary.airport_code,
+                    area="Terminal HVAC",
+                    action="Reduce peak cooling demand during tariff window",
+                    reason=f"Current load {summary.current_load_kw:,.0f} kW at ${_energy_tariff(as_of):.2f}/kWh tariff",
+                    estimated_savings_usd=round(summary.daily_cost_usd * 0.08, 2),
+                )
+            )
+        if summary.savings_opportunity_pct >= 10.0:
+            recommendations.append(
+                EnergyRecommendation(
+                    priority="MEDIUM",
+                    airport_code=summary.airport_code,
+                    area="Setpoint optimization",
+                    action="Raise cooling setpoint 1-2°F in low-occupancy terminals",
+                    reason=f"HVAC is {summary.hvac_load_kw / max(summary.current_load_kw, 1.0):.0%} of current terminal load",
+                    estimated_savings_usd=round(summary.daily_cost_usd * summary.savings_opportunity_pct / 100.0, 2),
+                )
+            )
+        if summary.outdoor_temp_f >= 88.0:
+            recommendations.append(
+                EnergyRecommendation(
+                    priority="MEDIUM",
+                    airport_code=summary.airport_code,
+                    area="Pre-cooling",
+                    action="Pre-cool before afternoon outdoor temperature peak",
+                    reason=f"Outdoor temperature is forecast around {summary.outdoor_temp_f:.1f}°F",
+                    estimated_savings_usd=round(summary.daily_cost_usd * 0.04, 2),
+                )
+            )
+
+    if not recommendations and summaries:
+        best = max(summaries, key=lambda item: item.daily_cost_usd)
+        recommendations.append(
+            EnergyRecommendation(
+                priority="LOW",
+                airport_code=best.airport_code,
+                area="Energy baseline",
+                action="Benchmark terminal HVAC schedule against current occupancy",
+                reason=f"{best.airport_code} has the highest estimated daily cost at ${best.daily_cost_usd:,.0f}",
+                estimated_savings_usd=round(best.daily_cost_usd * 0.03, 2),
+            )
+        )
+
+    recommendations.sort(key=lambda item: {"HIGH": 0, "MEDIUM": 1, "LOW": 2}.get(item.priority, 3))
+    return EnergyRecommendationsResponse(as_of=as_of, recommendations=recommendations)
 
 
 @app.get("/config/clock", response_model=ClockResponse)
