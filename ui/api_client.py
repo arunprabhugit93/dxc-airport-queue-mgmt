@@ -250,18 +250,52 @@ def priority_badge_html(priority: str) -> str:
 
 def render_sidebar() -> tuple[str, str]:
     """Render the global sidebar controls. Returns (selected_airport, demo_now)."""
+    from theme import t, BLUE_PRIMARY
+
     with st.sidebar:
+        p = t()
+
+        # Brand header
         st.markdown(
-            '<div style="font-size:1.1em;font-weight:700;color:#FAFAFA;'
-            'margin-bottom:16px;letter-spacing:0.02em;">AIRPORT OPS</div>',
+            f'<div style="padding:8px 0 16px 0;margin-bottom:8px;'
+            f'border-bottom:1px solid {p["border"]};">'
+            f'<div style="font-size:1.2em;font-weight:800;color:{p["text_primary"]};'
+            f'letter-spacing:0.03em;">Airport Ops</div>'
+            f'<div style="font-size:0.7em;color:{p["text_muted"]};margin-top:2px;">'
+            f'Queue Management Intelligence</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        airport = st.selectbox("Airport", ["All"] + AIRPORT_CODES, index=0, key="sb_airport")
 
-        st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+        # Theme toggle
+        mode = st.session_state.get("theme_mode", "dark")
+        new_mode = st.toggle(
+            "Light mode" if mode == "dark" else "Dark mode",
+            value=(mode == "light"),
+            key="sb_theme_toggle",
+        )
+        target = "light" if new_mode else "dark"
+        if target != mode:
+            st.session_state["theme_mode"] = target
+            st.rerun()
+
+        st.divider()
+
+        # Airport selector
         st.markdown(
-            '<div style="font-size:0.8em;color:#8B949E;text-transform:uppercase;'
-            'letter-spacing:0.05em;margin-bottom:8px;">Demo Clock</div>',
+            f'<div style="font-size:0.7em;color:{p["text_muted"]};text-transform:uppercase;'
+            f'letter-spacing:0.08em;margin-bottom:4px;">Select Airport</div>',
+            unsafe_allow_html=True,
+        )
+        airport = st.selectbox("Airport", ["All"] + AIRPORT_CODES, index=0,
+                               key="sb_airport", label_visibility="collapsed")
+
+        st.divider()
+
+        # Demo clock
+        st.markdown(
+            f'<div style="font-size:0.7em;color:{p["text_muted"]};text-transform:uppercase;'
+            f'letter-spacing:0.08em;margin-bottom:6px;">Demo Clock</div>',
             unsafe_allow_html=True,
         )
         try:
@@ -269,17 +303,18 @@ def render_sidebar() -> tuple[str, str]:
             demo_now = clock["demo_now"]
         except Exception:
             demo_now = "2021-11-24T07:00:00"
-            st.warning("API unreachable -- using default clock.")
+            st.warning("API unreachable")
 
         st.markdown(
-            f'<div style="background:#1A1D23;border:1px solid #2D3139;border-radius:6px;'
-            f'padding:10px 14px;margin-bottom:8px;">'
-            f'<div style="font-size:0.75em;color:#636B74;text-transform:uppercase;">Current</div>'
-            f'<div style="font-size:0.9em;color:#FAFAFA;font-weight:600;">{demo_now}</div>'
+            f'<div style="background:{p["surface"]};border:1px solid {p["border"]};'
+            f'border-radius:8px;padding:12px 14px;margin-bottom:10px;">'
+            f'<div style="font-size:0.65em;color:{p["text_muted"]};text-transform:uppercase;'
+            f'letter-spacing:0.06em;">Current Time</div>'
+            f'<div style="font-size:1em;color:{BLUE_PRIMARY};font-weight:700;'
+            f'font-family:monospace;margin-top:4px;">{demo_now}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-        st.caption(f"Range: {DATA_MIN_DATE} to {DATA_MAX_DATE}")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -296,12 +331,17 @@ def render_sidebar() -> tuple[str, str]:
                 try:
                     result = set_clock(ts)
                     demo_now = result["demo_now"]
-                    st.success(f"Clock: {demo_now}")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not set clock: {e}")
             else:
-                st.warning("Pick both a date and time first.")
+                st.warning("Pick date and time first.")
+
+        st.markdown(
+            f'<div style="font-size:0.7em;color:{p["text_muted"]};margin-top:4px;">'
+            f'Range: {DATA_MIN_DATE} to {DATA_MAX_DATE}</div>',
+            unsafe_allow_html=True,
+        )
 
     return airport, demo_now
 
