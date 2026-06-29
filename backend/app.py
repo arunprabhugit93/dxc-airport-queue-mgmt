@@ -705,6 +705,19 @@ def queues_all_areas(airport: str | None = None) -> AllAreaQueuesResponse:
         ops_sql += " ORDER BY airport_code, area_type"
         ops_rows = con.execute(ops_sql, ops_params).fetchall()
 
+        if not ops_rows:
+            ops_sql2 = """
+                SELECT airport_code, area_type, AVG(queue_length), AVG(wait_min), AVG(staff_on_duty)
+                FROM airport_ops
+                WHERE CAST(ts AS DATE) = ?
+            """
+            ops_params2: list[object] = [obs_date]
+            if airport:
+                ops_sql2 += " AND airport_code = ?"
+                ops_params2.append(airport)
+            ops_sql2 += " GROUP BY airport_code, area_type ORDER BY airport_code, area_type"
+            ops_rows = con.execute(ops_sql2, ops_params2).fetchall()
+
         for row in ops_rows:
             queues.append(
                 AllAreaQueue(
@@ -744,7 +757,7 @@ def passenger_journey(airport: str) -> PassengerJourneyResponse:
                 int(row["pax"]),
             )
 
-        # Ops data
+        # Ops data — find nearest available hour if exact match is empty
         ops_rows = con.execute(
             """
             SELECT area_type, wait_min, queue_length
@@ -755,6 +768,17 @@ def passenger_journey(airport: str) -> PassengerJourneyResponse:
             """,
             [airport, obs_date, obs_hour],
         ).fetchall()
+        if not ops_rows:
+            ops_rows = con.execute(
+                """
+                SELECT area_type, AVG(wait_min), AVG(queue_length)
+                FROM airport_ops
+                WHERE airport_code = ?
+                  AND CAST(ts AS DATE) = ?
+                GROUP BY area_type
+                """,
+                [airport, obs_date],
+            ).fetchall()
         ops_lookup: dict[str, tuple[float, int]] = {
             row[0]: (float(row[1]) if row[1] else 0.0, int(row[2]) if row[2] else 0)
             for row in ops_rows
