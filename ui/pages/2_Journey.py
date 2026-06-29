@@ -182,52 +182,65 @@ def _render_journey(airport_code: str) -> None:
 
     spacer(20)
 
-    # === FULL-WIDTH SANKEY ===
-    section_header("Passenger Flow Diagram")
+    # === PASSENGER FLOW INFOGRAPHIC ===
+    section_header("Passenger Flow")
 
-    node_labels = ["Arrival"]
-    node_colours = [BLUE_PRIMARY]
-    for s in stages:
-        lbl = STAGE_LABELS.get(s["stage"], s["stage"])
-        wait = s["avg_wait_min"]
-        node_labels.append(f"{lbl}\n{wait:.0f} min | {s.get('queue_length', '?')} queued")
-        node_colours.append(STATUS_COLOUR.get(s.get("status", "OK"), GREEN))
-    node_labels.append("Complete")
-    node_colours.append(BLUE_PRIMARY)
-
-    n = len(stages)
-    source_indices = list(range(n)) + [n]
-    target_indices = list(range(1, n + 1)) + [n + 1]
-    values = [max(s.get("queue_length", 50), 30) for s in stages] + [max(stages[-1].get("queue_length", 50), 30)]
-    link_colours = [
-        _hex_to_rgba(STATUS_COLOUR.get(s.get("status", "OK"), GREEN), 0.35)
-        for s in stages
-    ] + [_hex_to_rgba(BLUE_PRIMARY, 0.25)]
-
-    fig_sankey = go.Figure(go.Sankey(
-        arrangement="snap",
-        node=dict(
-            pad=30,
-            thickness=30,
-            label=node_labels,
-            color=node_colours,
-            line=dict(color=BORDER, width=1),
-        ),
-        link=dict(
-            source=source_indices,
-            target=target_indices,
-            value=values,
-            color=link_colours,
-        ),
-    ))
-    fig_sankey.update_layout(
-        height=350,
-        margin=dict(l=20, r=20, t=10, b=10),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=TEXT_PRIMARY, size=11),
+    cumulative = 0.0
+    flow_html = (
+        '<div style="display:flex;align-items:stretch;gap:0;margin:0 0 20px 0;">'
     )
-    st.plotly_chart(fig_sankey, key="journey_sankey", width="stretch")
+    for i, s in enumerate(stages):
+        label = STAGE_LABELS.get(s["stage"], s["stage"])
+        short_label = label.split("(")[0].strip().split("&")[0].strip()
+        status = s.get("status", "OK")
+        colour = STATUS_COLOUR.get(status, GREEN)
+        wait = s["avg_wait_min"]
+        queue_len = s.get("queue_length", 0)
+        cumulative += wait
+        pct = round(wait / total_journey * 100) if total_journey > 0 else 20
+        step_num = STAGE_ICONS.get(s["stage"], str(i + 1))
+
+        flow_html += (
+            # Arrow connector (skip before first)
+            (f'<div style="display:flex;align-items:center;color:{BORDER};font-size:1.4em;'
+             f'margin:0 -2px;">&#9654;</div>' if i > 0 else '')
+            +
+            # Stage card
+            f'<div style="flex:1;background:{SURFACE};border:1px solid {BORDER};'
+            f'border-top:3px solid {colour};border-radius:8px;padding:14px 10px;'
+            f'text-align:center;min-width:0;">'
+
+            # Step number
+            f'<div style="width:28px;height:28px;border-radius:50%;background:{_hex_to_rgba(colour, 0.2)};'
+            f'border:2px solid {colour};margin:0 auto 8px;display:flex;align-items:center;'
+            f'justify-content:center;font-size:0.75em;font-weight:700;color:{colour};">{step_num}</div>'
+
+            # Label
+            f'<div style="font-size:0.75em;font-weight:600;color:{TEXT_PRIMARY};'
+            f'margin-bottom:6px;line-height:1.2;min-height:2.4em;">{short_label}</div>'
+
+            # Wait time (hero metric)
+            f'<div style="font-size:1.8em;font-weight:800;color:{colour};line-height:1;">'
+            f'{wait:.0f}</div>'
+            f'<div style="font-size:0.65em;color:{TEXT_MUTED};margin-bottom:6px;">min wait</div>'
+
+            # Queue depth mini-bar
+            f'<div style="background:{BORDER};border-radius:3px;height:6px;margin:4px 8px;overflow:hidden;">'
+            f'<div style="background:{colour};width:{min(pct * 2, 100)}%;height:100%;border-radius:3px;"></div>'
+            f'</div>'
+
+            # Queue count + cumulative
+            f'<div style="font-size:0.7em;color:{TEXT_MUTED};">{queue_len:,} queued</div>'
+            f'<div style="font-size:0.65em;color:{TEXT_MUTED};margin-top:2px;">+{cumulative:.0f}m total</div>'
+
+            # Status badge
+            f'<div style="margin-top:6px;">{status_badge(status)}</div>'
+
+            f'</div>'
+        )
+
+    flow_html += '</div>'
+    st.markdown(flow_html, unsafe_allow_html=True)
 
     spacer(20)
 
