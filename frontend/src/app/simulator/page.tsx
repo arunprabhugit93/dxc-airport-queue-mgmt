@@ -60,14 +60,15 @@ export default function SimulatorPage() {
     setError(null);
     try {
       const body: Record<string, unknown> = {
-        airport,
-        area,
-        lanes,
+        airport_code: airport,
+        area_type: area,
+        num_lanes: lanes,
         precheck_ratio: precheckRatio,
-        service_rate: parseFloat(serviceRate) || 2.5,
+        service_rate_per_lane: parseFloat(serviceRate) || 3.0,
         surge_multiplier: surgeMultiplier,
         duration_min: duration,
         use_current_arrivals: useCurrent,
+        arrival_rate_per_min: useCurrent ? null : 10.0,
       };
       const data = await api.simulateWhatIf(body);
       setResults(data);

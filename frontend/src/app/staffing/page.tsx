@@ -34,7 +34,7 @@ const COST_PER_HOUR = 35;
 export default function StaffingPage() {
   const { demoNow } = useClock();
   const [airport, setAirport] = useState("ATL");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState("2022-06-15");
   const [area, setArea] = useState("SECURITY_TSA");
   const [slaTarget, setSlaTarget] = useState(10);
   const [hours, setHours] = useState<StaffingHour[]>([]);
@@ -126,7 +126,7 @@ export default function StaffingPage() {
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground uppercase tracking-wider">Date</label>
           <input
-            type="date"
+            type="date" min="2020-02-15" max="2022-10-15"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"

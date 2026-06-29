@@ -45,12 +45,8 @@ interface KpiData {
 export default function AnalyticsPage() {
   const { demoNow } = useClock();
   const [airport, setAirport] = useState("ALL");
-  const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
-  });
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateFrom, setDateFrom] = useState("2022-06-01");
+  const [dateTo, setDateTo] = useState("2022-10-15");
   const [data, setData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +170,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground uppercase tracking-wider">From</label>
           <input
-            type="date"
+            type="date" min="2020-02-15" max="2022-10-15"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
@@ -184,7 +180,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground uppercase tracking-wider">To</label>
           <input
-            type="date"
+            type="date" min="2020-02-15" max="2022-10-15"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
