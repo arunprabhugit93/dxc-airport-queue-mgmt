@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ClockProvider } from "@/components/clock-context";
 import { TopBar, Sidebar } from "@/components/nav";
 
 const geistSans = Geist({
@@ -32,11 +33,13 @@ export default function RootLayout({
     >
       <body className="h-full flex flex-col bg-background text-foreground">
         <ThemeProvider>
-          <TopBar />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
-          </div>
+          <ClockProvider>
+            <TopBar />
+            <div className="flex flex-1 overflow-hidden">
+              <Sidebar />
+              <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
+            </div>
+          </ClockProvider>
         </ThemeProvider>
       </body>
     </html>

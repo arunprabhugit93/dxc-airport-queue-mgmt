@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useClock } from "./clock-context";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -90,8 +92,8 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border bg-muted/30 overflow-y-auto">
-      <div className="p-3">
+    <aside className="w-56 shrink-0 border-r border-border bg-muted/30 flex flex-col">
+      <div className="p-3 flex-1 overflow-y-auto">
         <div className="flex items-center gap-1.5 px-2 py-1.5 mb-2">
           <Layers className="h-4 w-4 text-blue-500" />
           <span className="text-xs font-bold text-foreground uppercase tracking-wider">Queue Management</span>
@@ -118,6 +120,74 @@ export function Sidebar() {
           })}
         </nav>
       </div>
+      <ClockSelector />
     </aside>
   );
 }
+
+function ClockSelector() {
+  const { demoNow, loading, setClock } = useClock();
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSet = async () => {
+    if (!date || !time) return;
+    setError("");
+    try {
+      await setClock(`${date}T${time}:00`);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  if (loading) return null;
+
+  const displayDate = demoNow ? demoNow.slice(0, 10) : "";
+  const displayTime = demoNow ? demoNow.slice(11, 16) : "";
+
+  return (
+    <div className="border-t border-border p-3">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
+        Demo Clock
+      </div>
+      <div className="bg-card border border-border rounded-md px-3 py-2 mb-2">
+        <div className="text-[10px] text-muted-foreground uppercase">Current</div>
+        <div className="text-sm font-mono font-bold text-blue-500">
+          {displayDate}
+        </div>
+        <div className="text-xs font-mono text-muted-foreground">
+          {displayTime}
+        </div>
+      </div>
+      <div className="flex gap-1.5 mb-1.5">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          min="2020-02-15"
+          max="2022-10-15"
+          className="flex-1 bg-card border border-border rounded px-2 py-1 text-xs text-foreground"
+        />
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="w-20 bg-card border border-border rounded px-2 py-1 text-xs text-foreground"
+        />
+      </div>
+      <button
+        onClick={handleSet}
+        disabled={!date || !time}
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-medium py-1.5 rounded transition-colors"
+      >
+        Set Clock
+      </button>
+      {error && <div className="text-[10px] text-red-500 mt-1">{error}</div>}
+      <div className="text-[10px] text-muted-foreground mt-1.5">
+        Range: 2020-02-15 to 2022-10-15
+      </div>
+    </div>
+  );
+}
+
