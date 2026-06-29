@@ -82,7 +82,7 @@ export function TopBar() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-12 items-center px-4 gap-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-foreground shrink-0">
-          <Plane className="h-5 w-5 text-blue-500" />
+          <Plane className="h-5 w-5 text-sky-500" />
           <span className="text-sm font-bold tracking-tight">Airport Ops Platform</span>
         </Link>
 
@@ -90,29 +90,30 @@ export function TopBar() {
 
         <nav className="flex items-center gap-1 overflow-x-auto flex-1">
           {modules.map((m) => {
+            const isActive =
+              m.active &&
+              (m.id === "energy-management"
+                ? pathname.startsWith("/energy-management")
+                : !pathname.startsWith("/energy-management"));
             const content = (
               <>
                 <m.icon className="h-3.5 w-3.5" />
                 {m.label}
-                {!m.active && <span className="text-[10px] opacity-50">Soon</span>}
+                {!m.active && <span className="text-[10px] opacity-40">Soon</span>}
               </>
             );
-            const className = cn(
+            const cls = cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors",
-              m.active && (m.id === "energy-management" ? pathname.startsWith("/energy-management") : !pathname.startsWith("/energy-management"))
-                ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/15"
+              isActive
+                ? "bg-sky-500/10 text-sky-600 border border-sky-500/20 hover:bg-sky-500/15 dark:text-sky-400"
                 : m.active
                   ? "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  : "text-muted-foreground/50 cursor-not-allowed"
+                  : "text-muted-foreground/40 cursor-not-allowed"
             );
             return m.href ? (
-              <Link key={m.id} href={m.href} className={className}>
-                {content}
-              </Link>
+              <Link key={m.id} href={m.href} className={cls}>{content}</Link>
             ) : (
-              <button key={m.id} className={className} disabled={!m.active}>
-                {content}
-              </button>
+              <button key={m.id} className={cls} disabled={!m.active}>{content}</button>
             );
           })}
         </nav>
@@ -121,6 +122,7 @@ export function TopBar() {
           <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Toggle theme"
           >
             {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -138,11 +140,12 @@ export function Sidebar() {
   const TitleIcon = isEnergy ? Zap : Layers;
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border bg-muted/30 flex flex-col">
+    /* Always dark navy regardless of light/dark toggle */
+    <aside className="w-56 shrink-0 flex flex-col" style={{ backgroundColor: "#1b2a4a", borderRight: "1px solid #253555" }}>
       <div className="p-3 flex-1 overflow-y-auto">
-        <div className="flex items-center gap-1.5 px-2 py-1.5 mb-2">
-          <TitleIcon className="h-4 w-4 text-blue-500" />
-          <span className="text-xs font-bold text-foreground uppercase tracking-wider">{title}</span>
+        <div className="flex items-center gap-1.5 px-2 py-2 mb-1">
+          <TitleIcon className="h-4 w-4 text-sky-400" />
+          <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest">{title}</span>
         </div>
         <nav className="flex flex-col gap-0.5">
           {pages.map(({ href, label, icon: Icon }) => {
@@ -152,15 +155,16 @@ export function Sidebar() {
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors group",
+                  "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
                   active
-                    ? "bg-blue-500/10 text-blue-500 font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-sky-500/20 text-sky-300 font-semibold"
+                    : "text-slate-400 hover:text-slate-100 hover:bg-white/8"
                 )}
+                style={active ? {} : undefined}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1">{label}</span>
-                {active && <ChevronRight className="h-3 w-3 opacity-50" />}
+                <Icon className={cn("h-4 w-4 shrink-0", active ? "text-sky-400" : "text-slate-500")} />
+                <span className="flex-1 text-[13px]">{label}</span>
+                {active && <ChevronRight className="h-3 w-3 text-sky-400/60" />}
               </Link>
             );
           })}
@@ -193,18 +197,12 @@ function ClockSelector() {
   const displayTime = demoNow ? demoNow.slice(11, 16) : "";
 
   return (
-    <div className="border-t border-border p-3">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
-        Demo Clock
-      </div>
-      <div className="bg-card border border-border rounded-md px-3 py-2 mb-2">
-        <div className="text-[10px] text-muted-foreground uppercase">Current</div>
-        <div className="text-sm font-mono font-bold text-blue-500">
-          {displayDate}
-        </div>
-        <div className="text-xs font-mono text-muted-foreground">
-          {displayTime}
-        </div>
+    <div style={{ borderTop: "1px solid #253555" }} className="p-3">
+      <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Demo Clock</div>
+      <div className="rounded-md px-3 py-2 mb-2" style={{ backgroundColor: "#152238" }}>
+        <div className="text-[10px] text-slate-500 uppercase mb-0.5">Current</div>
+        <div className="text-sm font-mono font-bold text-sky-400">{displayDate}</div>
+        <div className="text-xs font-mono text-slate-400">{displayTime}</div>
       </div>
       <div className="flex gap-1.5 mb-1.5">
         <input
@@ -213,26 +211,26 @@ function ClockSelector() {
           onChange={(e) => setDate(e.target.value)}
           min="2020-02-15"
           max="2022-10-15"
-          className="flex-1 bg-card border border-border rounded px-2 py-1 text-xs text-foreground"
+          className="flex-1 rounded px-2 py-1 text-xs text-slate-200 outline-none"
+          style={{ backgroundColor: "#152238", border: "1px solid #253555" }}
         />
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="w-20 bg-card border border-border rounded px-2 py-1 text-xs text-foreground"
+          className="w-20 rounded px-2 py-1 text-xs text-slate-200 outline-none"
+          style={{ backgroundColor: "#152238", border: "1px solid #253555" }}
         />
       </div>
       <button
         onClick={handleSet}
         disabled={!date || !time}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-medium py-1.5 rounded transition-colors"
+        className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-30 text-white text-xs font-medium py-1.5 rounded transition-colors"
       >
         Set Clock
       </button>
-      {error && <div className="text-[10px] text-red-500 mt-1">{error}</div>}
-      <div className="text-[10px] text-muted-foreground mt-1.5">
-        Range: 2020-02-15 to 2022-10-15
-      </div>
+      {error && <div className="text-[10px] text-red-400 mt-1">{error}</div>}
+      <div className="text-[10px] text-slate-600 mt-1.5">Range: 2020-02-15 → 2022-10-15</div>
     </div>
   );
 }

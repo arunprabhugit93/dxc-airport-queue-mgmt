@@ -27,6 +27,8 @@ import {
   Legend,
 } from "recharts";
 
+const CH = { grid: "#e2e8f0", tick: "#94a3b8", sky: "#0ea5e9", red: "#dc2626" };
+
 interface SimResults {
   scenario: Record<string, number>;
   baseline: Record<string, number>;
@@ -306,22 +308,22 @@ export default function SimulatorPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 40, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
                   <XAxis
                     dataKey="metric"
-                    tick={{ fill: "#8B949E", fontSize: 11 }}
+                    tick={{ fill: CH.tick, fontSize: 11 }}
                     angle={-20}
                     textAnchor="end"
-                    stroke="#2D3139"
+                    stroke={CH.grid}
                   />
-                  <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                  <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                   <Tooltip
                     contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                     labelStyle={{ color: "var(--foreground)" }}
                   />
                   <Legend />
-                  <Bar dataKey="Baseline" fill="#F85149" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Scenario" fill="#58A6FF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Baseline" fill={CH.red} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Scenario" fill={CH.sky} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

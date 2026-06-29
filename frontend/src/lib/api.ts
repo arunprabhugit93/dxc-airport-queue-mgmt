@@ -1,11 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "/api";
 
 async function get<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${API_BASE}${path}`);
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  let urlStr = `${API_BASE}${path}`;
+  if (params && Object.keys(params).length > 0) {
+    urlStr += `?${new URLSearchParams(params).toString()}`;
   }
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  const res = await fetch(urlStr, { cache: "no-store" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `API error ${res.status}`);

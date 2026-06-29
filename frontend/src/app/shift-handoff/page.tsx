@@ -86,6 +86,7 @@ export default function ShiftHandoffPage() {
       try {
         const res = await api.getShiftHandoff(
           airport === "All" ? undefined : airport,
+          shiftHours,
         );
         if (!cancelled) setHandoffs(res.handoffs);
       } catch (err) {

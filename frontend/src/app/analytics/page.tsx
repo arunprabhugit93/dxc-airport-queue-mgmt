@@ -30,6 +30,8 @@ import {
   Legend,
 } from "recharts";
 
+const CH = { grid: "#e2e8f0", tick: "#94a3b8", sky: "#0ea5e9", green: "#16a34a", red: "#dc2626", amber: "#d97706" };
+
 interface TrendPoint {
   obs_date: string;
   avg_wait_min: number;
@@ -262,9 +264,9 @@ export default function AnalyticsPage() {
                 <TabsContent value="wait" className="mt-4">
                   <ResponsiveContainer width="100%" height={350}>
                     <LineChart data={trendData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                      <XAxis dataKey="date" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
-                      <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                      <XAxis dataKey="date" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
+                      <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                         labelStyle={{ color: "var(--foreground)" }}
@@ -273,7 +275,7 @@ export default function AnalyticsPage() {
                       <Line
                         type="monotone"
                         dataKey="avg_wait"
-                        stroke="#0080FF"
+                        stroke={CH.sky}
                         strokeWidth={2}
                         dot={{ r: 3 }}
                         name="Avg Wait (min)"
@@ -285,15 +287,15 @@ export default function AnalyticsPage() {
                 <TabsContent value="volume" className="mt-4">
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={trendData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                      <XAxis dataKey="date" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
-                      <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                      <XAxis dataKey="date" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
+                      <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                         labelStyle={{ color: "var(--foreground)" }}
                       />
                       <Legend />
-                      <Bar dataKey="total_pax" fill="#2EA043" radius={[4, 4, 0, 0]} name="Total Passengers" />
+                      <Bar dataKey="total_pax" fill={CH.green} radius={[4, 4, 0, 0]} name="Total Passengers" />
                     </BarChart>
                   </ResponsiveContainer>
                 </TabsContent>
@@ -301,9 +303,9 @@ export default function AnalyticsPage() {
                 <TabsContent value="sla" className="mt-4">
                   <ResponsiveContainer width="100%" height={350}>
                     <AreaChart data={trendData} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                      <XAxis dataKey="date" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
-                      <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" unit="%" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                      <XAxis dataKey="date" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
+                      <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} unit="%" />
                       <Tooltip
                         contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                         labelStyle={{ color: "var(--foreground)" }}
@@ -313,8 +315,8 @@ export default function AnalyticsPage() {
                       <Area
                         type="monotone"
                         dataKey="sla_breach_rate"
-                        stroke="#F85149"
-                        fill="#F85149"
+                        stroke={CH.red}
+                        fill={CH.red}
                         fillOpacity={0.15}
                         strokeWidth={2}
                         name="SLA Breach Rate (%)"
@@ -338,15 +340,15 @@ export default function AnalyticsPage() {
                     data={[...airportData].sort((a, b) => a.avg_wait - b.avg_wait)}
                     margin={{ top: 10, right: 20, bottom: 20, left: 20 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                    <XAxis dataKey="airport" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
-                    <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" label={{ value: "Avg Wait (min)", angle: -90, position: "insideLeft", fill: "#8B949E" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                    <XAxis dataKey="airport" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
+                    <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} label={{ value: "Avg Wait (min)", angle: -90, position: "insideLeft", fill: "#8B949E" }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                       labelStyle={{ color: "var(--foreground)" }}
                       formatter={(value: any) => [`${value.toFixed(1)} min`, "Avg Wait"]}
                     />
-                    <Bar dataKey="avg_wait" fill="#0080FF" radius={[4, 4, 0, 0]} name="Avg Wait (min)" />
+                    <Bar dataKey="avg_wait" fill={CH.sky} radius={[4, 4, 0, 0]} name="Avg Wait (min)" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

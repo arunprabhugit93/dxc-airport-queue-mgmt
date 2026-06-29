@@ -11,12 +11,19 @@ interface MetricCardProps {
 export function MetricCard({ label, value, sublabel, accentColor, className }: MetricCardProps) {
   return (
     <div
-      className={cn("bg-card border border-border rounded-lg p-5", className)}
-      style={accentColor ? { borderLeftWidth: 4, borderLeftColor: accentColor } : undefined}
+      className={cn(
+        "bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow",
+        className
+      )}
+      style={accentColor ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined}
     >
-      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{label}</div>
-      <div className="text-3xl font-bold text-foreground">{value}</div>
-      {sublabel && <div className="text-xs text-muted-foreground mt-1">{sublabel}</div>}
+      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+        {label}
+      </div>
+      <div className="text-2xl font-bold text-foreground leading-none">{value}</div>
+      {sublabel && (
+        <div className="text-xs text-muted-foreground mt-1.5">{sublabel}</div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,17 @@ import { AlertTriangle, Clock, TrendingUp } from "lucide-react";
 
 const AREA_KEYS = Object.keys(AREA_LABELS);
 
+// Theme-safe chart palette — readable in both light and dark modes
+const CH = {
+  grid: "#e2e8f0",
+  tick: "#94a3b8",
+  sky: "#0ea5e9",
+  navy: "#1e3a5f",
+  red: "#dc2626",
+  amber: "#d97706",
+  green: "#16a34a",
+};
+
 export default function ForecastPage() {
   const { demoNow } = useClock();
   const [airport, setAirport] = useState(AIRPORT_CODES[0]);
@@ -236,21 +247,21 @@ export default function ForecastPage() {
                   <AreaChart data={chartData}>
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#2D3139"
+                      stroke={CH.grid}
                     />
                     <XAxis
                       dataKey="horizon"
-                      tick={{ fill: "#8B949E", fontSize: 12 }}
+                      tick={{ fill: CH.tick, fontSize: 12 }}
                       tickFormatter={(v: number) => `+${v}m`}
                     />
                     <YAxis
-                      tick={{ fill: "#8B949E", fontSize: 12 }}
+                      tick={{ fill: CH.tick, fontSize: 12 }}
                       tickFormatter={(v: number) => `${v}m`}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#161B22",
-                        border: "1px solid #30363D",
+                        backgroundColor: "var(--card)",
+                        border: "1px solid var(--border)",
                         borderRadius: 8,
                       }}
                       labelFormatter={(v) => `+${v} min`}
@@ -268,36 +279,32 @@ export default function ForecastPage() {
                     />
                     <ReferenceLine
                       y={10}
-                      stroke="#F85149"
+                      stroke={CH.red}
                       strokeDasharray="4 4"
-                      label={{
-                        value: "SLA (10 min)",
-                        fill: "#F85149",
-                        fontSize: 11,
-                      }}
+                      label={{ value: "SLA 10m", fill: CH.red, fontSize: 11 }}
                     />
                     {/* Confidence band: upper area */}
                     <Area
                       type="monotone"
                       dataKey="upper"
                       stroke="none"
-                      fill="#0080FF"
-                      fillOpacity={0.1}
+                      fill={CH.sky}
+                      fillOpacity={0.12}
                     />
-                    {/* Confidence band: lower area (subtracts to create band) */}
+                    {/* Confidence band: lower masks the bottom of the upper fill */}
                     <Area
                       type="monotone"
                       dataKey="lower"
                       stroke="none"
-                      fill="#0D1117"
-                      fillOpacity={0.8}
+                      fill="var(--background)"
+                      fillOpacity={1}
                     />
                     {/* Predicted line */}
                     <Area
                       type="monotone"
                       dataKey="predicted"
-                      stroke="#0080FF"
-                      strokeWidth={2}
+                      stroke={CH.sky}
+                      strokeWidth={2.5}
                       fill="none"
                       dot={false}
                     />
@@ -319,15 +326,15 @@ export default function ForecastPage() {
                     <BarChart data={chartData}>
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="#2D3139"
+                        stroke={CH.grid}
                       />
                       <XAxis
                         dataKey="horizon"
-                        tick={{ fill: "#8B949E", fontSize: 12 }}
+                        tick={{ fill: CH.tick, fontSize: 12 }}
                         tickFormatter={(v: number) => `+${v}m`}
                       />
                       <YAxis
-                        tick={{ fill: "#8B949E", fontSize: 12 }}
+                        tick={{ fill: CH.tick, fontSize: 12 }}
                         tickFormatter={(v: number) => `${v}`}
                       />
                       <Tooltip
@@ -342,11 +349,7 @@ export default function ForecastPage() {
                           "Throughput",
                         ]}
                       />
-                      <Bar
-                        dataKey="throughput"
-                        fill="#58A6FF"
-                        radius={[4, 4, 0, 0]}
-                      />
+                      <Bar dataKey="throughput" fill={CH.sky} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

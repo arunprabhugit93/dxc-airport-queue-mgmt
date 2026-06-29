@@ -30,11 +30,12 @@ import {
 } from "recharts";
 
 const COST_PER_HOUR = 35;
+const CH = { grid: "#e2e8f0", tick: "#94a3b8", sky: "#0ea5e9", amber: "#d97706", green: "#16a34a", red: "#dc2626" };
 
 export default function StaffingPage() {
   const { demoNow } = useClock();
   const [airport, setAirport] = useState("ATL");
-  const [date, setDate] = useState("2022-06-15");
+  const [date, setDate] = useState(() => demoNow ? demoNow.slice(0, 10) : "2021-11-24");
   const [area, setArea] = useState("SECURITY_TSA");
   const [slaTarget, setSlaTarget] = useState(10);
   const [hours, setHours] = useState<StaffingHour[]>([]);
@@ -219,29 +220,29 @@ export default function StaffingPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
                 <ComposedChart data={chartData} margin={{ top: 10, right: 40, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                  <XAxis dataKey="hour" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                  <XAxis dataKey="hour" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                   <YAxis
                     yAxisId="left"
-                    tick={{ fill: "#8B949E", fontSize: 12 }}
-                    stroke="#2D3139"
-                    label={{ value: "Lanes", angle: -90, position: "insideLeft", fill: "#8B949E" }}
+                    tick={{ fill: CH.tick, fontSize: 12 }}
+                    stroke={CH.grid}
+                    label={{ value: "Lanes", angle: -90, position: "insideLeft", fill: CH.tick }}
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tick={{ fill: "#8B949E", fontSize: 12 }}
-                    stroke="#2D3139"
-                    label={{ value: "Passengers", angle: 90, position: "insideRight", fill: "#8B949E" }}
+                    tick={{ fill: CH.tick, fontSize: 12 }}
+                    stroke={CH.grid}
+                    label={{ value: "Passengers", angle: 90, position: "insideRight", fill: CH.tick }}
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                     labelStyle={{ color: "var(--foreground)" }}
                   />
                   {/* Shift boundaries */}
-                  <ReferenceLine x="06:00" yAxisId="left" stroke="#58A6FF" strokeDasharray="5 5" label={{ value: "Shift 1", fill: "#58A6FF", fontSize: 11 }} />
-                  <ReferenceLine x="14:00" yAxisId="left" stroke="#58A6FF" strokeDasharray="5 5" label={{ value: "Shift 2", fill: "#58A6FF", fontSize: 11 }} />
-                  <ReferenceLine x="22:00" yAxisId="left" stroke="#58A6FF" strokeDasharray="5 5" label={{ value: "Shift 3", fill: "#58A6FF", fontSize: 11 }} />
+                  <ReferenceLine x="06:00" yAxisId="left" stroke={CH.sky} strokeDasharray="5 5" label={{ value: "Shift 1", fill: CH.sky, fontSize: 11 }} />
+                  <ReferenceLine x="14:00" yAxisId="left" stroke={CH.sky} strokeDasharray="5 5" label={{ value: "Shift 2", fill: CH.sky, fontSize: 11 }} />
+                  <ReferenceLine x="22:00" yAxisId="left" stroke={CH.sky} strokeDasharray="5 5" label={{ value: "Shift 3", fill: CH.sky, fontSize: 11 }} />
 
                   <Bar yAxisId="left" dataKey="recommended_lanes" radius={[4, 4, 0, 0]} name="Recommended Lanes">
                     {chartData.map((entry, i) => (
@@ -252,7 +253,7 @@ export default function StaffingPage() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="forecast_pax"
-                    stroke="#D29922"
+                    stroke={CH.amber}
                     strokeWidth={2}
                     dot={false}
                     name="Forecast Pax"

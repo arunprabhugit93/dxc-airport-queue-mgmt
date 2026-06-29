@@ -28,6 +28,8 @@ import {
   Cell,
 } from "recharts";
 
+const CH = { grid: "#e2e8f0", tick: "#94a3b8", sky: "#0ea5e9", amber: "#d97706", red: "#dc2626" };
+
 const SEVERITIES = ["ALL", "LOW", "MEDIUM", "HIGH"];
 const TYPES = ["ALL", "spike", "drift", "flatline", "threshold_breach", "statistical_outlier"];
 
@@ -244,22 +246,22 @@ export default function AnomaliesPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
                 <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
                   <XAxis
                     dataKey="x"
                     type="number"
                     domain={["dataMin", "dataMax"]}
                     tickFormatter={(v) => new Date(v).toLocaleDateString()}
-                    tick={{ fill: "#8B949E", fontSize: 12 }}
-                    stroke="#2D3139"
+                    tick={{ fill: CH.tick, fontSize: 12 }}
+                    stroke={CH.grid}
                   />
                   <YAxis
                     dataKey="y"
                     type="number"
                     domain={[0, Math.max(airportList.length - 1, 0)]}
                     tickFormatter={(v) => airportList[v] || ""}
-                    tick={{ fill: "#8B949E", fontSize: 12 }}
-                    stroke="#2D3139"
+                    tick={{ fill: CH.tick, fontSize: 12 }}
+                    stroke={CH.grid}
                   />
                   <Tooltip
                     content={({ payload }) => {
@@ -298,20 +300,20 @@ export default function AnomaliesPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={typeBreakdown} margin={{ top: 10, right: 20, bottom: 40, left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
                     <XAxis
                       dataKey="name"
-                      tick={{ fill: "#8B949E", fontSize: 11 }}
+                      tick={{ fill: CH.tick, fontSize: 11 }}
                       angle={-30}
                       textAnchor="end"
-                      stroke="#2D3139"
+                      stroke={CH.grid}
                     />
-                    <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                    <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                       labelStyle={{ color: "var(--foreground)" }}
                     />
-                    <Bar dataKey="count" fill="#0080FF" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill={CH.sky} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -324,20 +326,20 @@ export default function AnomaliesPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
                   <BarChart data={detectorBreakdown} margin={{ top: 10, right: 20, bottom: 40, left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
                     <XAxis
                       dataKey="name"
-                      tick={{ fill: "#8B949E", fontSize: 11 }}
+                      tick={{ fill: CH.tick, fontSize: 11 }}
                       angle={-30}
                       textAnchor="end"
-                      stroke="#2D3139"
+                      stroke={CH.grid}
                     />
-                    <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                    <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                       labelStyle={{ color: "var(--foreground)" }}
                     />
-                    <Bar dataKey="count" fill="#58A6FF" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="#38bdf8" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -352,14 +354,14 @@ export default function AnomaliesPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={crossAirport} margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3139" />
-                  <XAxis dataKey="airport" tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
-                  <YAxis tick={{ fill: "#8B949E", fontSize: 12 }} stroke="#2D3139" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CH.grid} />
+                  <XAxis dataKey="airport" tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
+                  <YAxis tick={{ fill: CH.tick, fontSize: 12 }} stroke={CH.grid} />
                   <Tooltip
                     contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: 8 }}
                     labelStyle={{ color: "var(--foreground)" }}
                   />
-                  <Bar dataKey="count" fill="#D29922" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill={CH.amber} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
