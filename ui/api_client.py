@@ -10,8 +10,8 @@ import streamlit as st
 
 API_BASE: str = os.environ.get("API_BASE", "http://localhost:8000")
 
-SLA_COLOUR = {"OK": "#2ecc71", "WARNING": "#f39c12", "BREACH": "#e74c3c"}
-SEVERITY_COLOUR = {"LOW": "#95a5a6", "MEDIUM": "#f39c12", "HIGH": "#e74c3c"}
+SLA_COLOUR = {"OK": "#2EA043", "WARNING": "#D29922", "BREACH": "#F85149"}
+SEVERITY_COLOUR = {"LOW": "#636B74", "MEDIUM": "#D29922", "HIGH": "#F85149"}
 AIRPORT_CODES = ["ATL", "DEN", "ORD", "LAX", "DFW"]
 
 AREA_TYPES = [
@@ -213,49 +213,57 @@ def check_high_anomalies(demo_now: str, airport: str | None = None) -> list[dict
 
 def sla_badge_html(status: str) -> str:
     """Return an HTML badge span for an SLA status value."""
-    colour = SLA_COLOUR.get(status, "#95a5a6")
+    colour = SLA_COLOUR.get(status, "#636B74")
     return (
-        f'<span style="background:{colour};color:#fff;padding:2px 8px;'
-        f'border-radius:4px;font-size:0.85em;font-weight:600;">{status}</span>'
+        f'<span style="background:{colour};color:#fff;padding:3px 10px;'
+        f'border-radius:4px;font-size:0.75em;font-weight:600;letter-spacing:0.03em;">{status}</span>'
     )
 
 
 def trend_arrow(trend: str) -> str:
     """Return a coloured trend arrow string."""
     if trend == "UP":
-        return '<span style="color:#e74c3c;font-weight:700;">&#9650; UP</span>'
+        return '<span style="color:#F85149;font-weight:700;">&#9650; UP</span>'
     if trend == "DOWN":
-        return '<span style="color:#2ecc71;font-weight:700;">&#9660; DOWN</span>'
-    return '<span style="color:#95a5a6;font-weight:700;">&#9654; FLAT</span>'
+        return '<span style="color:#2EA043;font-weight:700;">&#9660; DOWN</span>'
+    return '<span style="color:#636B74;font-weight:700;">&#9654; FLAT</span>'
 
 
 def severity_badge_html(severity: str) -> str:
     """Return an HTML badge span for a severity value."""
-    colour = SEVERITY_COLOUR.get(severity, "#95a5a6")
+    colour = SEVERITY_COLOUR.get(severity, "#636B74")
     return (
-        f'<span style="background:{colour};color:#fff;padding:2px 8px;'
-        f'border-radius:4px;font-size:0.85em;font-weight:600;">{severity}</span>'
+        f'<span style="background:{colour};color:#fff;padding:3px 10px;'
+        f'border-radius:4px;font-size:0.75em;font-weight:600;letter-spacing:0.03em;">{severity}</span>'
     )
 
 
 def priority_badge_html(priority: str) -> str:
     """Return an HTML badge for recommendation priority."""
-    colour_map = {"HIGH": "#e74c3c", "MEDIUM": "#f39c12", "LOW": "#2ecc71"}
-    colour = colour_map.get(priority.upper(), "#95a5a6")
+    colour_map = {"HIGH": "#F85149", "MEDIUM": "#D29922", "LOW": "#2EA043"}
+    colour = colour_map.get(priority.upper(), "#636B74")
     return (
-        f'<span style="background:{colour};color:#fff;padding:2px 10px;'
-        f'border-radius:4px;font-size:0.85em;font-weight:700;">{priority}</span>'
+        f'<span style="background:{colour};color:#fff;padding:3px 10px;'
+        f'border-radius:4px;font-size:0.75em;font-weight:600;letter-spacing:0.03em;">{priority}</span>'
     )
 
 
 def render_sidebar() -> tuple[str, str]:
     """Render the global sidebar controls. Returns (selected_airport, demo_now)."""
     with st.sidebar:
-        st.title("Controls")
-        airport = st.selectbox("Airport", ["All"] + AIRPORT_CODES, index=0)
+        st.markdown(
+            '<div style="font-size:1.1em;font-weight:700;color:#FAFAFA;'
+            'margin-bottom:16px;letter-spacing:0.02em;">AIRPORT OPS</div>',
+            unsafe_allow_html=True,
+        )
+        airport = st.selectbox("Airport", ["All"] + AIRPORT_CODES, index=0, key="sb_airport")
 
-        st.divider()
-        st.subheader("Demo Clock")
+        st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="font-size:0.8em;color:#8B949E;text-transform:uppercase;'
+            'letter-spacing:0.05em;margin-bottom:8px;">Demo Clock</div>',
+            unsafe_allow_html=True,
+        )
         try:
             clock = get_clock()
             demo_now = clock["demo_now"]
@@ -263,8 +271,15 @@ def render_sidebar() -> tuple[str, str]:
             demo_now = "2021-11-24T07:00:00"
             st.warning("API unreachable -- using default clock.")
 
-        st.caption(f"Current: **{demo_now}**")
-        st.caption(f"Valid range: {DATA_MIN_DATE} to {DATA_MAX_DATE}")
+        st.markdown(
+            f'<div style="background:#1A1D23;border:1px solid #2D3139;border-radius:6px;'
+            f'padding:10px 14px;margin-bottom:8px;">'
+            f'<div style="font-size:0.75em;color:#636B74;text-transform:uppercase;">Current</div>'
+            f'<div style="font-size:0.9em;color:#FAFAFA;font-weight:600;">{demo_now}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(f"Range: {DATA_MIN_DATE} to {DATA_MAX_DATE}")
 
         col1, col2 = st.columns(2)
         with col1:
@@ -275,7 +290,7 @@ def render_sidebar() -> tuple[str, str]:
         with col2:
             new_time = st.time_input("Time", value=None, key="clock_time")
 
-        if st.button("Set Clock"):
+        if st.button("Set Clock", key="sb_set_clock"):
             if new_date and new_time:
                 ts = f"{new_date}T{new_time.strftime('%H:%M:%S')}"
                 try:
@@ -341,4 +356,12 @@ def render_alert_banner(demo_now: str, airport: str | None = None) -> None:
     """Show prominent alert banners for high-severity anomalies."""
     high = check_high_anomalies(demo_now, airport if airport != "All" else None)
     for event in high[:3]:
-        st.error(f"ALERT: {event.get('description', 'High-severity anomaly detected')}")
+        desc = event.get("description", "High-severity anomaly detected")
+        st.markdown(
+            f'<div style="background:#F8514915;border:1px solid #F85149;border-left:4px solid #F85149;'
+            f'border-radius:8px;padding:12px 16px;margin-bottom:8px;">'
+            f'<span style="color:#F85149;font-weight:700;font-size:0.8em;letter-spacing:0.05em;">'
+            f'ALERT</span>'
+            f'<span style="color:#FAFAFA;margin-left:10px;">{desc}</span></div>',
+            unsafe_allow_html=True,
+        )
