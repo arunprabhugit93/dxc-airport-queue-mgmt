@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useClock } from "@/components/clock-context";
 import { api, AIRPORT_CODES, AREA_LABELS, type StaffingHour } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
 const COST_PER_HOUR = 35;
 
 export default function StaffingPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState("ATL");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [area, setArea] = useState("SECURITY_TSA");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useClock } from "@/components/clock-context";
 import { api, AIRPORT_CODES } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,6 +43,7 @@ interface KpiData {
 }
 
 export default function AnalyticsPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState("ALL");
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
@@ -94,7 +96,7 @@ export default function AnalyticsPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [airport, dateFrom, dateTo]);
+  }, [demoNow, airport, dateFrom, dateTo]);
 
   const kpis = data?.kpis ?? {};
   const trend = data?.trend ?? [];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useClock } from "@/components/clock-context";
 import { api, AIRPORT_CODES, AREA_LABELS } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -41,6 +42,7 @@ const METRIC_LABELS: Record<string, string> = {
 };
 
 export default function SimulatorPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState("ATL");
   const [area, setArea] = useState("SECURITY_TSA");
   const [lanes, setLanes] = useState(5);

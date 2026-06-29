@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClock } from "@/components/clock-context";
 import {
   api,
   AIRPORT_CODES,
@@ -60,6 +61,7 @@ interface CapacityArea {
 }
 
 export default function QueuesPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState(AIRPORT_CODES[0]);
   const [queues, setQueues] = useState<AreaQueue[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
@@ -93,7 +95,7 @@ export default function QueuesPage() {
     return () => {
       cancelled = true;
     };
-  }, [airport]);
+  }, [demoNow, airport]);
 
   const barData = queues.map((q) => ({
     name: AREA_LABELS[q.area_type] || q.area_type,

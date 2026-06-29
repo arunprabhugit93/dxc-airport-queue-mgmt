@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClock } from "@/components/clock-context";
 import {
   api,
   AIRPORT_CODES,
@@ -52,6 +53,7 @@ const STAGE_LABELS: Record<string, string> = {
 const PIE_COLORS = ["#0080FF", "#58A6FF", "#D29922", "#2EA043", "#F85149"];
 
 export default function JourneyPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState(AIRPORT_CODES[0]);
   const [stages, setStages] = useState<JourneyStage[]>([]);
   const [totalJourney, setTotalJourney] = useState(0);
@@ -81,7 +83,7 @@ export default function JourneyPage() {
     return () => {
       cancelled = true;
     };
-  }, [airport]);
+  }, [demoNow, airport]);
 
   const barData = stages.map((s) => ({
     name: STAGE_LABELS[s.stage] || s.stage,

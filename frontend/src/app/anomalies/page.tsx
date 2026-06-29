@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useClock } from "@/components/clock-context";
 import { api, AIRPORT_CODES, SEVERITY_COLORS, type AnomalyEvent } from "@/lib/api";
 import { MetricCard } from "@/components/metric-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -31,6 +32,7 @@ const SEVERITIES = ["ALL", "LOW", "MEDIUM", "HIGH"];
 const TYPES = ["ALL", "spike", "drift", "flatline", "threshold_breach", "statistical_outlier"];
 
 export default function AnomaliesPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState("All");
   const [hours, setHours] = useState(24);
   const [severityFilter, setSeverityFilter] = useState("ALL");
@@ -57,7 +59,7 @@ export default function AnomaliesPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [airport, hours]);
+  }, [demoNow, airport, hours]);
 
   const filtered = useMemo(() => {
     return events.filter((e) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClock } from "@/components/clock-context";
 import {
   api,
   AIRPORT_CODES,
@@ -56,6 +57,7 @@ function TrendArrow({ trend }: { trend: string }) {
 }
 
 export default function CommandCenter() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState("All");
   const [networkScore, setNetworkScore] = useState<number>(0);
   const [networkGrade, setNetworkGrade] = useState<string>("—");
@@ -108,7 +110,7 @@ export default function CommandCenter() {
     return () => {
       cancelled = true;
     };
-  }, [airport]);
+  }, [demoNow, airport]);
 
   const highAnomalies = anomalies.filter((a) => a.severity === "HIGH");
   const worstWait = airports.length

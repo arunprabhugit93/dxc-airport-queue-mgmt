@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClock } from "@/components/clock-context";
 import {
   api,
   AIRPORT_CODES,
@@ -35,6 +36,7 @@ import { AlertTriangle, Clock, TrendingUp } from "lucide-react";
 const AREA_KEYS = Object.keys(AREA_LABELS);
 
 export default function ForecastPage() {
+  const { demoNow } = useClock();
   const [airport, setAirport] = useState(AIRPORT_CODES[0]);
   const [area, setArea] = useState("SECURITY_TSA");
   const [model, setModel] = useState("prophet");
@@ -59,7 +61,7 @@ export default function ForecastPage() {
       }
     }
     loadModels();
-  }, []);
+  }, [demoNow, ]);
 
   // Load forecast data
   useEffect(() => {
