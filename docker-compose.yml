@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  data:
+    build:
+      context: .
+      dockerfile: Dockerfile.data
+    volumes:
+      - airportdata:/app/data
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api   # backend-engineer creates this
+    ports:
+      - "8000:8000"
+    volumes:
+      - airportdata:/app/data:ro
+    depends_on:
+      data:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  airportdata:
