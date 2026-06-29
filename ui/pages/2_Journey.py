@@ -1,4 +1,4 @@
-"""Page 2 -- Passenger Journey."""
+"""Page 2 -- Passenger Journey (rich infographic)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from api_client import (
 from theme import (
     inject_theme,
     section_header,
-    metric_card,
     status_badge,
     spacer,
     apply_chart_theme,
@@ -24,53 +23,53 @@ from theme import (
     TEXT_SECONDARY,
     TEXT_MUTED,
     BLUE_PRIMARY,
+    BLUE_LIGHT,
     GREEN,
     YELLOW,
     RED,
+    ORANGE,
 )
 
 st.set_page_config(page_title="Passenger Journey", layout="wide")
 inject_theme()
 airport, demo_now = render_sidebar()
 
-# Page header
 st.markdown(
     '<h1 style="color:#FAFAFA;font-weight:700;margin-bottom:4px;">Passenger Journey</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
     '<p style="color:#8B949E;font-size:0.95em;margin-bottom:24px;">'
-    'Visualise the end-to-end passenger experience from arrival to boarding</p>',
+    'End-to-end passenger experience from curb to gate -- where time is spent, where bottlenecks form</p>',
     unsafe_allow_html=True,
 )
 render_alert_banner(demo_now, airport)
 
-# ---------------------------------------------------------------------------
-# Sidebar controls
-# ---------------------------------------------------------------------------
 with st.sidebar:
     st.divider()
-    selected_airport = st.selectbox(
-        "Airport for journey view",
-        AIRPORT_CODES,
-        index=0,
-        key="journey_airport",
-    )
+    selected_airport = st.selectbox("Airport", AIRPORT_CODES, index=0, key="journey_airport")
     compare_mode = st.toggle("Compare all airports", key="journey_compare")
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 STATUS_COLOUR = {"OK": GREEN, "WARNING": YELLOW, "BREACH": RED}
-
-STAGE_ORDER = ["CHECKIN", "SECURITY_TSA", "SECURITY_PRECHECK", "IMMIGRATION", "GATE", "BOARDING"]
 STAGE_LABELS = {
-    "CHECKIN": "Check-in",
-    "SECURITY_TSA": "Security (TSA)",
-    "SECURITY_PRECHECK": "Security (PreCheck)",
-    "IMMIGRATION": "Immigration",
-    "GATE": "Gate Area",
-    "BOARDING": "Boarding",
+    "CHECKIN": "Check-in & Bag Drop",
+    "SECURITY_TSA": "TSA Security Screening",
+    "SECURITY_PRECHECK": "TSA PreCheck",
+    "IMMIGRATION": "Immigration & Customs",
+    "GATE": "Gate & Boarding",
+    "BAGGAGE": "Baggage Claim",
+}
+STAGE_ICONS = {
+    "CHECKIN": "01", "SECURITY_TSA": "02", "SECURITY_PRECHECK": "02",
+    "IMMIGRATION": "03", "GATE": "04", "BAGGAGE": "05",
+}
+STAGE_DESC = {
+    "CHECKIN": "Document verification, boarding pass issuance, checked luggage drop-off",
+    "SECURITY_TSA": "ID check, X-ray screening, walk-through metal detector, divestiture",
+    "SECURITY_PRECHECK": "Expedited screening for trusted travellers, no shoe/laptop removal",
+    "IMMIGRATION": "Passport control, customs declaration, border protection clearance",
+    "GATE": "Boarding zone queuing, final document check, jet bridge access",
+    "BAGGAGE": "Carousel wait, bag retrieval, customs exit for arriving passengers",
 }
 
 
@@ -81,17 +80,13 @@ def _hex_to_rgba(hex_color: str, alpha: float = 0.4) -> str:
 
 
 def _render_journey(airport_code: str) -> None:
-    """Render full journey dashboard for one airport."""
     try:
         data = get_passenger_journey(demo_now, airport_code)
     except Exception:
         data = None
 
     if data is None:
-        st.info(
-            f"Journey data for {airport_code} is not yet available. "
-            "The /passenger-journey endpoint may not be deployed."
-        )
+        st.info(f"Journey data for {airport_code} is not yet available.")
         return
 
     stages = data.get("stages", [])
@@ -99,90 +94,203 @@ def _render_journey(airport_code: str) -> None:
     bottleneck = data.get("bottleneck", "Unknown")
 
     if not stages:
-        st.info(f"No journey stage data available for {airport_code}.")
+        st.info(f"No journey stage data for {airport_code}.")
         return
 
-    # --- Bottleneck callout ---
-    bottleneck_stage = next(
-        (s for s in stages if s["stage"] == bottleneck), None
-    )
-    if bottleneck_stage:
-        bn_wait = bottleneck_stage["avg_wait_min"]
-        bn_status = bottleneck_stage.get("status", "WARNING")
-        bn_colour = STATUS_COLOUR.get(bn_status, YELLOW)
+    # === HERO: Total Journey Time + Bottleneck ===
+    bn_stage = next((s for s in stages if s["stage"] == bottleneck), None)
+    bn_label = STAGE_LABELS.get(bottleneck, bottleneck)
+    bn_wait = bn_stage["avg_wait_min"] if bn_stage else 0
+    bn_colour = STATUS_COLOUR.get(bn_stage.get("status", "WARNING") if bn_stage else "WARNING", YELLOW)
+    bn_pct = round(bn_wait / total_journey * 100) if total_journey > 0 else 0
+
+    hero_left, hero_right = st.columns([1, 1])
+    with hero_left:
         st.markdown(
-            f'<div style="background:{SURFACE};border:1px solid {BORDER};'
-            f'border-left:4px solid {bn_colour};border-radius:8px;padding:16px 20px;margin-bottom:16px;">'
-            f'<div style="color:{bn_colour};font-weight:700;font-size:1.1em;margin-bottom:4px;">'
-            f'Bottleneck: {STAGE_LABELS.get(bottleneck, bottleneck)}</div>'
-            f'<div style="color:{TEXT_SECONDARY};font-size:0.95em;">'
-            f'Average wait <span style="color:{TEXT_PRIMARY};font-weight:600;">{bn_wait:.1f} min</span>'
-            f' -- this stage is currently the longest delay in the passenger journey.</div>'
+            f'<div style="background:{SURFACE};border:1px solid {BORDER};border-radius:12px;'
+            f'padding:28px 32px;text-align:center;">'
+            f'<div style="font-size:0.75em;color:{TEXT_MUTED};text-transform:uppercase;'
+            f'letter-spacing:0.1em;margin-bottom:8px;">TOTAL JOURNEY TIME</div>'
+            f'<div style="font-size:4em;font-weight:800;color:{TEXT_PRIMARY};line-height:1;">'
+            f'{total_journey:.0f}</div>'
+            f'<div style="font-size:1em;color:{TEXT_SECONDARY};margin-top:4px;">minutes curb to gate</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
-    # --- Journey summary ---
-    stage_parts = []
-    for s in stages:
-        label = STAGE_LABELS.get(s["stage"], s["stage"])
-        stage_parts.append(f"{s['avg_wait_min']:.0f} min {label.lower()}")
-    summary = ", ".join(stage_parts)
+    with hero_right:
+        st.markdown(
+            f'<div style="background:{SURFACE};border:1px solid {BORDER};border-left:4px solid {bn_colour};'
+            f'border-radius:12px;padding:28px 32px;">'
+            f'<div style="font-size:0.75em;color:{TEXT_MUTED};text-transform:uppercase;'
+            f'letter-spacing:0.1em;margin-bottom:8px;">BOTTLENECK IDENTIFIED</div>'
+            f'<div style="font-size:1.6em;font-weight:700;color:{bn_colour};margin-bottom:4px;">'
+            f'{bn_label}</div>'
+            f'<div style="font-size:2.2em;font-weight:800;color:{TEXT_PRIMARY};line-height:1;">'
+            f'{bn_wait:.0f} min</div>'
+            f'<div style="font-size:0.85em;color:{TEXT_SECONDARY};margin-top:6px;">'
+            f'{bn_pct}% of total journey time -- '
+            f'{STAGE_DESC.get(bottleneck, "")[:60]}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    spacer(20)
+
+    # === VISUAL JOURNEY PIPELINE ===
+    section_header("Journey Pipeline")
     st.markdown(
-        f'<p style="color:{TEXT_SECONDARY};font-size:0.95em;">A passenger arriving now will spend: '
-        f'<span style="color:{TEXT_PRIMARY};font-weight:600;">{summary}</span> = '
-        f'<span style="color:{BLUE_PRIMARY};font-weight:700;">{total_journey:.0f} min total.</span></p>',
+        f'<p style="color:{TEXT_SECONDARY};font-size:0.9em;margin-bottom:16px;">'
+        f'A passenger arriving at {airport_code} right now will pass through these stages. '
+        f'Bar width shows proportional time spent at each step.</p>',
         unsafe_allow_html=True,
     )
 
-    spacer(16)
-
-    col_sankey, col_timeline = st.columns([3, 2])
-
-    # --- Sankey Diagram ---
-    with col_sankey:
-        section_header("Passenger Flow")
-        node_labels = ["Arrival"]
-        node_colours = [BLUE_PRIMARY]
-        for s in stages:
-            node_labels.append(STAGE_LABELS.get(s["stage"], s["stage"]))
-            node_colours.append(STATUS_COLOUR.get(s.get("status", "OK"), GREEN))
-
-        source_indices = list(range(len(stages)))
-        target_indices = list(range(1, len(stages) + 1))
-        values = [max(s.get("queue_length", 50), 10) for s in stages]
-
-        link_colours = [
-            _hex_to_rgba(STATUS_COLOUR.get(s.get("status", "OK"), GREEN), 0.4)
-            for s in stages
-        ]
-
-        fig_sankey = go.Figure(go.Sankey(
-            node=dict(
-                pad=20,
-                thickness=25,
-                label=node_labels,
-                color=node_colours,
-            ),
-            link=dict(
-                source=source_indices,
-                target=target_indices,
-                value=values,
-                color=link_colours,
-            ),
-        ))
-        fig_sankey.update_layout(
-            height=400,
-            margin=dict(l=10, r=10, t=10, b=10),
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=TEXT_SECONDARY),
+    # Proportional horizontal pipeline bar
+    pipeline_html = '<div style="display:flex;gap:3px;border-radius:8px;overflow:hidden;height:56px;">'
+    for s in stages:
+        pct = max(s["avg_wait_min"] / total_journey * 100, 3) if total_journey > 0 else 20
+        colour = STATUS_COLOUR.get(s.get("status", "OK"), GREEN)
+        label = STAGE_LABELS.get(s["stage"], s["stage"]).split("&")[0].strip()
+        wait = s["avg_wait_min"]
+        pipeline_html += (
+            f'<div style="flex:{pct};background:{_hex_to_rgba(colour, 0.25)};'
+            f'border:1px solid {colour};display:flex;flex-direction:column;'
+            f'justify-content:center;align-items:center;padding:4px 2px;min-width:40px;">'
+            f'<div style="font-size:0.65em;color:{TEXT_SECONDARY};white-space:nowrap;overflow:hidden;'
+            f'text-overflow:ellipsis;max-width:100%;">{label}</div>'
+            f'<div style="font-size:1.1em;font-weight:700;color:{colour};">{wait:.0f}m</div>'
+            f'</div>'
         )
-        st.plotly_chart(fig_sankey, key="journey_sankey", width="stretch")
+    pipeline_html += '</div>'
+    st.markdown(pipeline_html, unsafe_allow_html=True)
 
-    # --- Journey Timeline (horizontal bar) ---
-    with col_timeline:
-        section_header("Cumulative Time")
+    spacer(8)
+
+    # Passenger narrative
+    stage_parts = [f"{s['avg_wait_min']:.0f} min at {STAGE_LABELS.get(s['stage'], s['stage']).lower()}"
+                   for s in stages]
+    narrative = " → ".join(stage_parts)
+    st.markdown(
+        f'<div style="background:{SURFACE};border:1px solid {BORDER};border-radius:8px;'
+        f'padding:14px 20px;font-size:0.9em;color:{TEXT_SECONDARY};">'
+        f'<span style="color:{BLUE_LIGHT};font-weight:600;">Passenger timeline:</span> '
+        f'{narrative} = <span style="color:{TEXT_PRIMARY};font-weight:700;">{total_journey:.0f} min total</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    spacer(20)
+
+    # === FULL-WIDTH SANKEY ===
+    section_header("Passenger Flow Diagram")
+
+    node_labels = ["Arrival"]
+    node_colours = [BLUE_PRIMARY]
+    for s in stages:
+        lbl = STAGE_LABELS.get(s["stage"], s["stage"])
+        wait = s["avg_wait_min"]
+        node_labels.append(f"{lbl}\n{wait:.0f} min | {s.get('queue_length', '?')} queued")
+        node_colours.append(STATUS_COLOUR.get(s.get("status", "OK"), GREEN))
+    node_labels.append("Complete")
+    node_colours.append(BLUE_PRIMARY)
+
+    n = len(stages)
+    source_indices = list(range(n)) + [n]
+    target_indices = list(range(1, n + 1)) + [n + 1]
+    values = [max(s.get("queue_length", 50), 30) for s in stages] + [max(stages[-1].get("queue_length", 50), 30)]
+    link_colours = [
+        _hex_to_rgba(STATUS_COLOUR.get(s.get("status", "OK"), GREEN), 0.35)
+        for s in stages
+    ] + [_hex_to_rgba(BLUE_PRIMARY, 0.25)]
+
+    fig_sankey = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(
+            pad=30,
+            thickness=30,
+            label=node_labels,
+            color=node_colours,
+            line=dict(color=BORDER, width=1),
+        ),
+        link=dict(
+            source=source_indices,
+            target=target_indices,
+            value=values,
+            color=link_colours,
+        ),
+    ))
+    fig_sankey.update_layout(
+        height=350,
+        margin=dict(l=20, r=20, t=10, b=10),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=TEXT_PRIMARY, size=11),
+    )
+    st.plotly_chart(fig_sankey, key="journey_sankey", width="stretch")
+
+    spacer(20)
+
+    # === STAGE DEEP-DIVE CARDS ===
+    section_header("Stage-by-Stage Analysis")
+
+    for s in stages:
+        label = STAGE_LABELS.get(s["stage"], s["stage"])
+        status = s.get("status", "OK")
+        colour = STATUS_COLOUR.get(status, GREEN)
+        wait = s["avg_wait_min"]
+        queue_len = s.get("queue_length", 0)
+        step_num = STAGE_ICONS.get(s["stage"], "?")
+        desc = STAGE_DESC.get(s["stage"], "")
+        pct_of_journey = round(wait / total_journey * 100) if total_journey > 0 else 0
+        wait_bar_width = min(pct_of_journey * 2, 100)
+
+        st.markdown(
+            f'<div style="background:{SURFACE};border:1px solid {BORDER};border-left:4px solid {colour};'
+            f'border-radius:8px;padding:18px 24px;margin-bottom:12px;display:flex;gap:24px;align-items:center;">'
+
+            # Step number circle
+            f'<div style="min-width:48px;height:48px;border-radius:50%;background:{_hex_to_rgba(colour, 0.2)};'
+            f'border:2px solid {colour};display:flex;align-items:center;justify-content:center;'
+            f'font-size:1.2em;font-weight:700;color:{colour};">{step_num}</div>'
+
+            # Main content
+            f'<div style="flex:1;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+            f'<div style="font-size:1.05em;font-weight:600;color:{TEXT_PRIMARY};">{label}</div>'
+            f'<div>{status_badge(status)}</div>'
+            f'</div>'
+            f'<div style="font-size:0.8em;color:{TEXT_MUTED};margin-bottom:10px;">{desc}</div>'
+
+            # Metrics row
+            f'<div style="display:flex;gap:24px;margin-bottom:8px;">'
+            f'<div><span style="font-size:1.6em;font-weight:700;color:{colour};">{wait:.1f}</span>'
+            f'<span style="font-size:0.8em;color:{TEXT_MUTED};"> min wait</span></div>'
+            f'<div><span style="font-size:1.6em;font-weight:700;color:{TEXT_PRIMARY};">{queue_len}</span>'
+            f'<span style="font-size:0.8em;color:{TEXT_MUTED};"> in queue</span></div>'
+            f'<div><span style="font-size:1.6em;font-weight:700;color:{TEXT_SECONDARY};">{pct_of_journey}%</span>'
+            f'<span style="font-size:0.8em;color:{TEXT_MUTED};"> of journey</span></div>'
+            f'</div>'
+
+            # Wait time progress bar
+            f'<div style="background:{BORDER};border-radius:4px;height:8px;overflow:hidden;">'
+            f'<div style="background:{colour};width:{wait_bar_width}%;height:100%;border-radius:4px;'
+            f'transition:width 0.3s ease;"></div>'
+            f'</div>'
+
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    spacer(20)
+
+    # === WAIT TIME BREAKDOWN CHART ===
+    section_header("Wait Time Breakdown")
+
+    col_bar, col_pie = st.columns([3, 2])
+
+    with col_bar:
         stage_names = [STAGE_LABELS.get(s["stage"], s["stage"]) for s in stages]
         wait_times = [s["avg_wait_min"] for s in stages]
         bar_colours = [STATUS_COLOUR.get(s.get("status", "OK"), GREEN) for s in stages]
@@ -193,105 +301,111 @@ def _render_journey(airport_code: str) -> None:
             orientation="h",
             marker=dict(color=bar_colours, opacity=0.9, line=dict(color=BORDER, width=1)),
             text=[f"{w:.1f} min" for w in wait_times],
-            textposition="auto",
-            textfont=dict(color=TEXT_PRIMARY),
+            textposition="outside",
+            textfont=dict(color=TEXT_PRIMARY, size=12),
         ))
+        fig_bar.add_vline(x=10, line_dash="dash", line_color=RED,
+                          annotation_text="SLA 10 min", annotation=dict(font=dict(color=RED, size=10)))
         apply_chart_theme(
-            fig_bar,
-            height=400,
+            fig_bar, height=300,
             xaxis_title="Wait Time (min)",
             yaxis=dict(autorange="reversed", gridcolor=BORDER, linecolor=BORDER),
         )
-        st.plotly_chart(fig_bar, key="journey_timeline", width="stretch")
+        st.plotly_chart(fig_bar, key="journey_bar", width="stretch")
 
-    spacer()
-
-    # --- Per-stage detail cards ---
-    section_header("Stage Details")
-    cols = st.columns(min(len(stages), 4))
-    for idx, s in enumerate(stages):
-        col = cols[idx % len(cols)]
-        status = s.get("status", "OK")
-        colour = STATUS_COLOUR.get(status, TEXT_MUTED)
-        label = STAGE_LABELS.get(s["stage"], s["stage"])
-        with col:
-            st.markdown(
-                f'<div style="background:{SURFACE};border:1px solid {BORDER};'
-                f'border-left:4px solid {colour};border-radius:8px;'
-                f'padding:16px;text-align:center;margin-bottom:10px;">'
-                f'<div style="font-size:0.8em;color:{TEXT_SECONDARY};text-transform:uppercase;'
-                f'letter-spacing:0.05em;">{label}</div>'
-                f'<div style="font-size:2em;font-weight:700;color:{TEXT_PRIMARY};margin:8px 0 4px 0;">'
-                f'{s["avg_wait_min"]:.1f}</div>'
-                f'<div style="font-size:0.8em;color:{TEXT_MUTED};">min wait</div>'
-                f'<div style="font-size:0.8em;color:{TEXT_MUTED};margin-top:4px;">'
-                f'{s.get("queue_length", "?")} in queue</div>'
-                f'<div style="margin-top:6px;">{status_badge(status)}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    with col_pie:
+        fig_pie = go.Figure(go.Pie(
+            labels=stage_names,
+            values=wait_times,
+            hole=0.5,
+            marker=dict(colors=bar_colours, line=dict(color=BORDER, width=2)),
+            textinfo="percent",
+            textfont=dict(color=TEXT_PRIMARY, size=11),
+            hovertemplate="%{label}<br>%{value:.1f} min<br>%{percent}<extra></extra>",
+        ))
+        fig_pie.update_layout(
+            height=300,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color=TEXT_SECONDARY, size=11),
+            legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=TEXT_SECONDARY, size=10)),
+            margin=dict(l=10, r=10, t=10, b=10),
+            annotations=[dict(text=f"{total_journey:.0f}<br>min", x=0.5, y=0.5,
+                              font=dict(size=20, color=TEXT_PRIMARY, weight=700),
+                              showarrow=False)],
+        )
+        st.plotly_chart(fig_pie, key="journey_pie", width="stretch")
 
 
-# ---------------------------------------------------------------------------
-# Render
-# ---------------------------------------------------------------------------
+# === RENDER ===
 if not compare_mode:
     _render_journey(selected_airport)
 else:
-    section_header("Cross-Airport Comparison")
+    section_header("Cross-Airport Journey Comparison")
+
     comparison_data = []
     for code in AIRPORT_CODES:
         try:
             jdata = get_passenger_journey(demo_now, code)
             if jdata and jdata.get("total_journey_min"):
-                comparison_data.append({
-                    "airport": code,
-                    "total_min": jdata["total_journey_min"],
-                    "bottleneck": jdata.get("bottleneck", "?"),
-                    "stages": jdata.get("stages", []),
-                })
+                comparison_data.append(jdata)
         except Exception:
             continue
 
     if not comparison_data:
-        st.info(
-            "Journey data is not yet available for any airport. "
-            "The /passenger-journey endpoint may not be deployed."
-        )
+        st.info("Journey data not available.")
     else:
-        fig_compare = go.Figure()
-        colors = [BLUE_PRIMARY, RED, GREEN, "#9b59b6", ORANGE]
-        for idx, entry in enumerate(comparison_data):
-            stage_labels = [
-                STAGE_LABELS.get(s["stage"], s["stage"]) for s in entry["stages"]
-            ]
-            stage_waits = [s["avg_wait_min"] for s in entry["stages"]]
-            fig_compare.add_trace(go.Bar(
-                name=entry["airport"],
-                x=stage_labels,
-                y=stage_waits,
-                marker=dict(color=colors[idx % len(colors)], opacity=0.9),
-            ))
-        apply_chart_theme(
-            fig_compare,
-            title="Journey Stage Wait Times by Airport",
-            height=450,
-            barmode="group",
-            xaxis_title="Stage",
-            yaxis_title="Wait (min)",
-        )
-        st.plotly_chart(fig_compare, key="journey_compare", width="stretch")
+        # Total journey comparison
+        codes = [d["airport_code"] for d in comparison_data]
+        totals = [d["total_journey_min"] for d in comparison_data]
+        bottlenecks = [STAGE_LABELS.get(d.get("bottleneck", "?"), d.get("bottleneck", "?")) for d in comparison_data]
+        bar_colors = [RED if t > 60 else YELLOW if t > 30 else GREEN for t in totals]
+
+        fig_total = go.Figure(go.Bar(
+            x=codes, y=totals,
+            marker=dict(color=bar_colors, opacity=0.9, line=dict(color=BORDER, width=1)),
+            text=[f"{t:.0f} min" for t in totals],
+            textposition="outside", textfont=dict(color=TEXT_PRIMARY),
+        ))
+        apply_chart_theme(fig_total, title="Total Journey Time by Airport", height=350,
+                          yaxis_title="Total Journey (min)")
+        st.plotly_chart(fig_total, key="journey_total_compare", width="stretch")
 
         spacer(12)
 
-        for entry in comparison_data:
-            bottleneck_label = STAGE_LABELS.get(
-                entry["bottleneck"], entry["bottleneck"]
-            )
+        # Stacked bar by stage
+        fig_stacked = go.Figure()
+        stage_colors = [BLUE_PRIMARY, RED, YELLOW, GREEN, ORANGE]
+        all_stage_names = []
+        for d in comparison_data:
+            for s in d.get("stages", []):
+                sn = s["stage"]
+                if sn not in all_stage_names:
+                    all_stage_names.append(sn)
+
+        for si, sn in enumerate(all_stage_names):
+            vals = []
+            for d in comparison_data:
+                stage_match = next((s for s in d.get("stages", []) if s["stage"] == sn), None)
+                vals.append(stage_match["avg_wait_min"] if stage_match else 0)
+            fig_stacked.add_trace(go.Bar(
+                name=STAGE_LABELS.get(sn, sn),
+                x=codes, y=vals,
+                marker=dict(color=stage_colors[si % len(stage_colors)], opacity=0.85),
+            ))
+        apply_chart_theme(fig_stacked, title="Journey Breakdown by Stage", height=400,
+                          barmode="stack", yaxis_title="Wait (min)")
+        st.plotly_chart(fig_stacked, key="journey_stacked", width="stretch")
+
+        spacer(12)
+
+        for d in comparison_data:
+            bn = STAGE_LABELS.get(d.get("bottleneck", "?"), d.get("bottleneck", "?"))
+            t = d["total_journey_min"]
+            c = RED if t > 60 else YELLOW if t > 30 else GREEN
             st.markdown(
-                f'<div style="color:{TEXT_SECONDARY};font-size:0.9em;margin-bottom:4px;">'
-                f'<span style="color:{TEXT_PRIMARY};font-weight:600;">{entry["airport"]}</span>: '
-                f'Total journey <span style="color:{BLUE_PRIMARY};font-weight:600;">'
-                f'{entry["total_min"]:.0f} min</span> -- bottleneck at {bottleneck_label}</div>',
+                f'<div style="color:{TEXT_SECONDARY};font-size:0.9em;margin-bottom:6px;">'
+                f'<span style="color:{c};font-weight:700;">{d["airport_code"]}</span>: '
+                f'{t:.0f} min total -- bottleneck at {bn}</div>',
                 unsafe_allow_html=True,
             )
