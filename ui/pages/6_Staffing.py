@@ -181,9 +181,9 @@ apply_chart_theme(
     xaxis_title="Hour",
     yaxis_title="Lanes",
     yaxis2=dict(
-        title="Passengers", overlaying="y", side="right",
+        title=dict(text="Passengers", font=dict(color=TEXT_SECONDARY)),
+        overlaying="y", side="right",
         gridcolor=BORDER, linecolor=BORDER, tickfont=dict(color=TEXT_SECONDARY),
-        titlefont=dict(color=TEXT_SECONDARY),
     ),
     barmode="group",
     legend=dict(orientation="h", y=-0.15, bgcolor="rgba(0,0,0,0)", font=dict(color=TEXT_SECONDARY)),
