@@ -24,6 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect } from "react";
 
 const modules = [
   { id: "queues", label: "Queue Mgmt", icon: Layers, active: true },
@@ -46,7 +47,10 @@ const queuePages = [
 ];
 
 export function TopBar() {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -77,12 +81,14 @@ export function TopBar() {
           ))}
         </nav>
 
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
+        {mounted && (
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+        )}
       </div>
     </header>
   );
