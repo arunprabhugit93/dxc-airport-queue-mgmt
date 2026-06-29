@@ -9,6 +9,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend import config
@@ -319,6 +320,13 @@ app = FastAPI(
     title="DXC Airport Queue Management POC API",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
